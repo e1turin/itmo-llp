@@ -9,9 +9,9 @@
 
 ### Выполнение 
 
-Лабы выполняются в отдельных ветках и потом будут слиты в e1turin/itmo-lls@main.
+Лабы выполняются в отдельных ветках и потом будут слиты в `main`.
 
-- [lab-1](https://github.com/e1turin/itmo-llp/tree/lab-1): store;
+- [`lab-1`](https://github.com/e1turin/itmo-llp/tree/lab-1): store;
 - [[--TODO]]
 
 - - -
