@@ -12,7 +12,10 @@ add_subdirectory(store)
 
 add_executable(main main.cpp)
 
-target_include_directories(main PUBLIC store/inc)
+target_include_directories(main PUBLIC
+        store/inc
+#        parser/inc client/inc server/inc...
+)
 target_link_libraries(main PUBLIC store)
 #target_sources(main PRIVATE
 #        main.cpp
