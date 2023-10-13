@@ -1,9 +1,12 @@
-//
-// Created by ivtur on 12.10.2023.
-//
+#include <iostream>
+#include "store.h"
+#include "store2.h"
 
 int main(int argc, char *argv[]) {
   (void)argc;
   (void)argv;
-  return 0;
+  std::cout << store();
+  std::cout << store2();
+
+  return 2;
 }

@@ -20,3 +20,11 @@
 - https://github.com/Hyperb0rean/itmo_llp3gr/blob/master/main.c — ожидаем ([[--TODO]])
 - https://gitlab.se.ifmo.ru/malevrovich/llp-lab1 — отдельные репозитории ([[--TODO]])
 - https://github.com/ANegrash/LLP_lab1/blob/master/src/main.c — отдельные репозитории, хз, очень просто
+
+Оформление CMakeLists.txt
+
+- https://habr.com/ru/articles/155467/ - Введение в CMake
+- https://stackoverflow.com/questions/31969547/what-is-the-difference-between-include-directories-and-target-include-directorie
+  - https://stackoverflow.com/questions/40227333/cmake-setup-multiple-projects-and-dependiencies-between-them/40242257#40242257
+- https://cmake.org/cmake/help/v3.24/manual/cmake-buildsystem.7.html#transitive-usage-requirements
+- крутой пример использования CMake — KDE 
