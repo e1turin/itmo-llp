@@ -17,11 +17,21 @@ add_library(GTest::GTest INTERFACE IMPORTED)
 target_link_libraries(GTest::GTest INTERFACE gtest_main)
 
 
-add_subdirectory(store)
+function(SETUP_LIST_OF_TESTS LIBRARY_NAME LIST_OF_TESTS)
+    foreach (TEST_NAME IN LISTS LIST_OF_TESTS)
+        add_executable(${TEST_NAME} ${TEST_NAME}.cpp)
+        target_link_libraries(${TEST_NAME}
+            PRIVATE
+                GTest::GTest
+                ${LIBRARY_NAME}
+        )
+        target_include_directories(${TEST_NAME}
+            PUBLIC
+                ${CMAKE_SOURCE_DIR}/${LIBRARY_NAME}/inc
+        )
+        add_test(${LIBRARY_NAME}_gtests ${TEST_NAME})
+    endforeach ()
+endfunction()
 
-# Now simply link against gtest or gtest_main as needed. Eg
-#[[
-add_executable(store_test store_test.cpp)
-target_link_libraries(store_test PRIVATE GTest::GTest store)
-add_test(store_gtests store_test)
-]]
+add_subdirectory(store)
+#[[ add_subdirectory(...) ]]

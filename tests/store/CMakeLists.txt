@@ -4,23 +4,10 @@ project(tests/store)
 set(LIBRARY_NAME store)
 list(APPEND LIST_OF_TESTS
     store_test # -> store_test.cpp
-    #[[ etc --> etc.cpp ]]
+    #[[ etc ]] # -> etc.cpp
 )
 
-
-foreach (TEST_NAME IN LISTS LIST_OF_TESTS)
-    add_executable(${TEST_NAME} ${TEST_NAME}.cpp)
-    target_link_libraries(${TEST_NAME}
-        PRIVATE
-            GTest::GTest
-            ${LIBRARY_NAME}
-    )
-    target_include_directories(${TEST_NAME}
-        PUBLIC
-            ${CMAKE_SOURCE_DIR}/${LIBRARY_NAME}/inc
-    )
-    add_test(${LIBRARY_NAME}_gtests ${TEST_NAME})
-endforeach ()
+SETUP_LIST_OF_TESTS(${LIBRARY_NAME} ${LIST_OF_TESTS})
 
 #[==[
 add_executable(store_test store_test.cpp)
