@@ -16,20 +16,29 @@ FetchContent_MakeAvailable(googletest)
 add_library(GTest::GTest INTERFACE IMPORTED)
 target_link_libraries(GTest::GTest INTERFACE gtest_main)
 
+include(GoogleTest)
 
-function(SETUP_LIST_OF_TESTS LIBRARY_NAME LIST_OF_TESTS)
-    foreach (TEST_NAME IN LISTS LIST_OF_TESTS)
-        add_executable(${TEST_NAME} ${TEST_NAME}.cpp)
-        target_link_libraries(${TEST_NAME}
+#[[
+Function for quick setup tests for every needed module.
+- `lib-name` is module name I'm testing.
+- `list-of-tests` is list which contains names of test files
+  without `.cpp` extension.
+NOTE: Don't forget to wrap variable of list with quotation
+      marks to pass it list.
+]]
+function(SETUP_LIST_OF_TESTS lib-name list-of-tests)
+    foreach (test-name ${list-of-tests})
+        add_executable(${test-name}_gtests ${test-name}.cpp)
+        target_link_libraries(${test-name}_gtests
             PRIVATE
                 GTest::GTest
-                ${LIBRARY_NAME}
+                ${lib-name}
         )
-        target_include_directories(${TEST_NAME}
+        target_include_directories(${test-name}_gtests
             PUBLIC
-                ${CMAKE_SOURCE_DIR}/${LIBRARY_NAME}/inc
+                ${CMAKE_SOURCE_DIR}/${lib-name}/inc
         )
-        add_test(${LIBRARY_NAME}_gtests ${TEST_NAME})
+        gtest_discover_tests(${test-name}_gtests)
     endforeach ()
 endfunction()
 

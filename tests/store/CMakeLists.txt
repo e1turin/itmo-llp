@@ -1,24 +1,32 @@
 cmake_minimum_required(VERSION 3.12)
 project(tests/store)
 
-set(LIBRARY_NAME store)
-list(APPEND LIST_OF_TESTS
-    store_test # -> store_test.cpp
-    #[[ etc ]] # -> etc.cpp
-)
+set(LIB_NAME store)
+list(APPEND LIST_OF_TESTS store_test store2_test)
 
-SETUP_LIST_OF_TESTS(${LIBRARY_NAME} ${LIST_OF_TESTS})
-
-#[==[
+SETUP_LIST_OF_TESTS(${LIB_NAME} "${LIST_OF_TESTS}")
+#[[
 add_executable(store_test store_test.cpp)
 target_link_libraries(store_test
-    PRIVATE
+        PRIVATE
         GTest::GTest
         store
 )
 target_include_directories(store_test
-    PUBLIC
+        PUBLIC
         ${CMAKE_SOURCE_DIR}/store/inc
 )
 add_test(store_gtests store_test)
-]==]
+####
+add_executable(store2_test store2_test.cpp)
+target_link_libraries(store2_test
+        PRIVATE
+        GTest::GTest
+        store
+)
+target_include_directories(store2_test
+        PUBLIC
+        ${CMAKE_SOURCE_DIR}/store/inc
+)
+add_test(store_gtests store2_test)
+]]
