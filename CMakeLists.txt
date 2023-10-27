@@ -8,18 +8,25 @@ project(itmo-llp
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
+
+enable_testing()
+
 add_subdirectory(store)
+add_subdirectory(tests)
 
-add_executable(main main.cpp)
-
-target_include_directories(main PUBLIC
-        store/inc
-#        parser/inc client/inc server/inc...
+add_executable(main)
+target_sources(main
+    PRIVATE
+        main.cpp
+        #[[ etc. ]]
 )
-target_link_libraries(main PUBLIC store)
-#target_sources(main PRIVATE
-#        main.cpp
-#        #...
-#)
-
-
+target_include_directories(main
+    PUBLIC
+        store/inc
+        #[[ etc./inc ]]
+)
+target_link_libraries(main
+    PUBLIC
+        store
+        #[[ etc ]]
+)

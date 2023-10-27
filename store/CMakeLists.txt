@@ -13,5 +13,5 @@ target_include_directories(store PRIVATE inc)
 target_sources(store PRIVATE
         src/store.cpp
         src/store2.cpp
-#        ...
+        #[[ etc. ]]
 )

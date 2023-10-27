@@ -28,3 +28,7 @@
   - https://stackoverflow.com/questions/40227333/cmake-setup-multiple-projects-and-dependiencies-between-them/40242257#40242257
 - https://cmake.org/cmake/help/v3.24/manual/cmake-buildsystem.7.html#transitive-usage-requirements
 - крутой пример использования CMake — KDE 
+
+Подключение тестов (Google test)
+
+- https://matgomes.com/integrate-google-test-into-cmake/
