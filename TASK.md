@@ -53,6 +53,33 @@
 
 ## Вариант 
 
-| Вариант | Форма данных           | Способ работы с файлом | Базовый язык запросов |  |
-|---------|------------------------|------------------------|-----------------------|--|
-| 4       | 1. Документное дерево  | 2. Отображение         | 4. GraphQL            |  |
+| Вариант | Форма данных          | Способ работы с файлом | Базовый язык запросов | Формат транспортного протокола | UI API |
+|---------|-----------------------|------------------------|-----------------------|--------------------------------|--------|
+| 4       | 1. Документное дерево | 2. Отображение         | 4. GraphQL            | 4. Thrift                      | 4      |
+
+## Комментарии
+
+Другие варианты выполнения лабы
+
+- https://gitlab.se.ifmo.ru/omgronny/llp-lab1 — отдельные репозитории, c++
+- https://github.com/deevroman/low-level-programming-labs — версии коммитов, c++
+- https://github.com/Hyperb0rean/itmo_llp3gr — [[--TODO]]
+- https://gitlab.se.ifmo.ru/malevrovich/llp-lab1 — отдельные репозитории, с
+- https://github.com/ANegrash/LLP_lab1 — отдельные репозитории, странное
+- https://github.com/vuhtang/nosql-db ― версии коммитов, с
+
+Оформление CMakeLists.txt
+
+- https://habr.com/ru/articles/155467/ - Введение в CMake
+- https://stackoverflow.com/questions/31969547/what-is-the-difference-between-include-directories-and-target-include-directorie
+   - https://stackoverflow.com/questions/40227333/cmake-setup-multiple-projects-and-dependiencies-between-them/40242257#40242257
+- https://cmake.org/cmake/help/v3.24/manual/cmake-buildsystem.7.html#transitive-usage-requirements
+- крутой пример использования CMake — KDE
+
+Подключение тестов (Google test)
+
+- https://matgomes.com/integrate-google-test-into-cmake/
+
+Настройка сборки в Docker 
+
+- https://www.jetbrains.com/help/clion/clion-toolchains-in-docker.html#build-and-run
