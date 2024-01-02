@@ -8,7 +8,7 @@ project(store
 
 add_library(store STATIC)
 
-target_include_directories(store PRIVATE inc)
+target_include_directories(store PRIVATE include)
 
 target_sources(store PRIVATE
         src/store.cpp
