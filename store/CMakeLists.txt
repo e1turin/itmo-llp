@@ -6,12 +6,18 @@ project(store
         LANGUAGES C CXX
 )
 
+cmake_policy(SET CMP0076 NEW) # avoid warning
+
 add_library(store STATIC)
 
-target_include_directories(store PRIVATE include)
+add_subdirectory(model)
+add_subdirectory(filesystem)
 
-target_sources(store PRIVATE
-        src/store.cpp
-        src/store2.cpp
-        #[[ etc. ]]
-)
+## deprecated:
+#target_include_directories(store PRIVATE include)
+#
+#target_sources(store PRIVATE
+#        src/store.cpp
+#        src/store2.cpp
+#        #[[ etc. ]]
+#)

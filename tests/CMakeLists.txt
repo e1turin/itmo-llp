@@ -36,7 +36,7 @@ function(SETUP_LIST_OF_TESTS lib-name list-of-tests)
         )
         target_include_directories(${test-name}_gtests
             PUBLIC
-                ${CMAKE_SOURCE_DIR}/${lib-name}/include
+                ${CMAKE_SOURCE_DIR}#/${lib-name}/include
         )
         gtest_discover_tests(${test-name}_gtests)
     endforeach ()

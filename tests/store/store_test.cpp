@@ -1,5 +1,5 @@
 #include <gtest/gtest.h>
-#include "store.h"
+#include "store/filesystem/store.h"
 
 
 TEST(HelloTest, StoreTest) {

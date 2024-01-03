@@ -8,7 +8,6 @@ project(itmo-llp
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
-
 enable_testing()
 
 add_subdirectory(store)
@@ -21,11 +20,12 @@ target_sources(main
         #[[ etc. ]]
 )
 
-target_include_directories(main
-    PUBLIC
-        store/include
-        #[[ etc./include ]]
-)
+## deprecated:
+#target_include_directories(main
+#    PUBLIC
+#        store/include
+#        #[[ etc./include ]]
+#)
 
 target_link_libraries(main
     PUBLIC
