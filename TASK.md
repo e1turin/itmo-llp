@@ -83,3 +83,7 @@
 Настройка сборки в Docker 
 
 - https://www.jetbrains.com/help/clion/clion-toolchains-in-docker.html#build-and-run
+
+Реализация структуры JSON на C++ в Skia
+
+- https://github.com/google/skia/blob/main/src/utils/SkJSON.h
