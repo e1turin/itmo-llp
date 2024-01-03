@@ -10,7 +10,7 @@ cmake_policy(SET CMP0076 NEW) # avoid warning
 
 add_library(store STATIC)
 
-add_subdirectory(model)
+add_subdirectory(dom)
 add_subdirectory(filesystem)
 
 ## deprecated:

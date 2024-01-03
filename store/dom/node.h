@@ -1,0 +1,5 @@
+
+#ifndef ITMO_LLP_STORE_DOM_NODE_H_
+#define ITMO_LLP_STORE_DOM_NODE_H_
+
+#endif //ITMO_LLP_STORE_DOM_NODE_H_
