@@ -1,4 +1,9 @@
 ---
 Language: Cpp
-BasedOnStyle: Chromium
+BasedOnStyle: Google
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+  AlignCompound: true
 ...
