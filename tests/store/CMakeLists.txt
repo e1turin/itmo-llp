@@ -3,7 +3,6 @@ project(tests/store)
 
 list(APPEND LIST_OF_TESTS
         store_test
-        store2_test
 )
 
 SETUP_LIST_OF_TESTS(store "${LIST_OF_TESTS}")

@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.12)
 project(itmo-llp
-        VERSION 0.0.0 # [<major>[.<minor>[.<patch>[.<tweak>]]]]
+        VERSION 0.0.0
         DESCRIPTION "LLP labs"
         LANGUAGES C CXX
 )
@@ -17,18 +17,9 @@ add_executable(main)
 target_sources(main
     PRIVATE
         main.cpp
-        #[[ etc. ]]
 )
-
-## deprecated:
-#target_include_directories(main
-#    PUBLIC
-#        store/include
-#        #[[ etc./include ]]
-#)
 
 target_link_libraries(main
     PUBLIC
         store
-        #[[ etc ]]
 )
