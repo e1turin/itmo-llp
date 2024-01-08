@@ -47,10 +47,21 @@ class alignas(8) Value {
 
   void init_tagged(Tag);
   void init_tagged_pointer(Tag, void*);
+  void set_parent(std::shared_ptr<Value>);
 
   template <typename T>
-  const T* data_ptr() const {
-    return reinterpret_cast<const T*>(&payload);  // maybe used cast with offset
+  [[nodiscard]] const T* data_ptr() const {
+    return reinterpret_cast<const T*>(payload);  // maybe used cast_data with offset
+  }
+
+  template <typename T>
+  const T* cast_data() const {
+    return reinterpret_cast<const T*>(payload);
+  }
+
+  template <typename T>
+  T* cast_data() {
+    return const_cast<T*>(const_cast<const Value*>(this)->cast_data<T>());
   }
 
  private:
@@ -61,25 +72,33 @@ class alignas(8) Value {
   uint8_t payload[kValueSize];
 };
 
+class NullValue final : Value {
+ public:
+  NullValue(Value* p);
+  inline static constexpr Type kType = Type::kNull;
+
+  NullValue(std::shared_ptr<Value>);
+};
+
 class BooleanValue final : Value {
  public:
   inline static constexpr Type kType = Type::kBoolean;
 
-  BooleanValue(bool);
+  BooleanValue(std::shared_ptr<Value>, bool);
 };
 
 class Int32Value final : Value {
  public:
   inline static constexpr Type kType = Type::kInt32;
 
-  Int32Value(int32_t);
+  Int32Value(std::shared_ptr<Value>, int32_t);
 };
 
 class Float32Value final : Value {
  public:
   inline static constexpr Type kType = Type::kFloat32;
 
-  Float32Value(float);
+  Float32Value(std::shared_ptr<Value>, float);
 };
 
 // additional class for vector-like types
@@ -106,8 +125,7 @@ class VectorValue : public Value {
 // every string is non-inline
 class StringValue final : public VectorValue<char, Value::Type::kString> {
  public:
-  StringValue();
-  StringValue(std::string, store::memory::ArenaAlloc&);
+  StringValue(std::shared_ptr<Value>, std::string, store::memory::ArenaAlloc&);
 
   std::string_view str() const {
     return std::string_view{this->begin(), this->size()};
@@ -121,14 +139,13 @@ struct Entry {
 
 class ObjectValue final : VectorValue<Entry, Value::Type::kObject> {
  public:
-  ObjectValue();
-  ObjectValue(std::vector<Entry>, store::memory::ArenaAlloc&);
+  ObjectValue(std::shared_ptr<Value>);
+  ObjectValue(std::shared_ptr<Value>, std::vector<Entry>, store::memory::ArenaAlloc&);
 
   const Value& operator[](std::string) const;
   const Entry& operator[](size_t i) const {
     return this->VectorValue::operator[](i);
   }
-
 };
 
 Value::Type Value::getType() const {

@@ -61,12 +61,13 @@
 
 Другие варианты выполнения лабы
 
-- https://gitlab.se.ifmo.ru/omgronny/llp-lab1 — отдельные репозитории, c++
-- https://github.com/deevroman/low-level-programming-labs — версии коммитов, c++
-- https://github.com/Hyperb0rean/itmo_llp3gr — [[--TODO]]
-- https://gitlab.se.ifmo.ru/malevrovich/llp-lab1 — отдельные репозитории, с
-- https://github.com/ANegrash/LLP_lab1 — отдельные репозитории, странное
-- https://github.com/vuhtang/nosql-db ― версии коммитов, с
+- https://gitlab.se.ifmo.ru/omgronny/llp-lab1 — отдельные репозитории, c++.
+- https://github.com/deevroman/low-level-programming-labs — версии коммитов, c++.
+- https://github.com/Hyperb0rean/itmo_llp3gr — [[--TODO]].
+- https://gitlab.se.ifmo.ru/malevrovich/llp-lab1 — отдельные репозитории, с.
+- https://github.com/ANegrash/LLP_lab1 — отдельные репозитории, странное.
+- https://github.com/vuhtang/nosql-db ― версии коммитов, с.
+- https://github.com/ruskaof/llp_database ― еще один интересный пример, c.
 
 Оформление CMakeLists.txt
 
