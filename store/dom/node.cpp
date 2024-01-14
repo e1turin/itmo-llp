@@ -1,16 +1,14 @@
 
 #include "node.h"
 
-#include <utility>
-
-namespace store::dom {
+namespace dom {
 
 void Value::init_tagged(Tag t) {
   this->tag = t;
   memset(payload, 0, sizeof(payload));
 }
 
-void Value::init_tagged_pointer(Tag t, void* p) {
+void Value::init_tagged_pointer(const Tag t, void* p) {
   this->init_tagged(t);
   *(this->cast_data<uintptr_t>()) = reinterpret_cast<uintptr_t>(p);
 }
@@ -42,7 +40,4 @@ Float32Value::Float32Value(std::shared_ptr<Value> p, float f) {
   *(this->cast_data<float>()) = f;
 }
 
-
-
-
-}  // namespace store::dom
+}  // namespace types

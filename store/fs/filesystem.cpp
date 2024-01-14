@@ -1,6 +1,6 @@
 
 #include "filesystem.h"
 
-namespace store::file {
+namespace fs {
 
 }

@@ -1,5 +1,4 @@
-#ifndef ITMO_LLP_STORE_DOM_NODE_H_
-#define ITMO_LLP_STORE_DOM_NODE_H_
+#pragma once
 
 #include <cstdint>
 #include <memory>
@@ -9,7 +8,7 @@
 
 #include "store/memory/arena_alloc.h"
 
-namespace store::dom {
+namespace dom {
 
 class alignas(8) Value {
  public:
@@ -43,7 +42,7 @@ class alignas(8) Value {
     kString      = 'S',  // = 0b0000'0101 // reference
     kObject      = 'O',  // = 0b0000'0110 // reference
   };
-  inline static constexpr const uint8_t kTagMask = 0b0000'0111;  // unused
+  inline static constexpr uint8_t kTagMask = 0b0000'0111;  // unused
 
   void init_tagged(Tag);
   void init_tagged_pointer(Tag, void*);
@@ -51,7 +50,8 @@ class alignas(8) Value {
 
   template <typename T>
   [[nodiscard]] const T* data_ptr() const {
-    return reinterpret_cast<const T*>(payload);  // maybe used cast_data with offset
+    return reinterpret_cast<const T*>(
+        payload);  // maybe used cast_data with offset
   }
 
   template <typename T>
@@ -66,7 +66,7 @@ class alignas(8) Value {
 
  private:
   std::shared_ptr<Value> parent;
-  enum Tag tag;
+  enum Tag tag = Tag::kNull;
 
   inline static constexpr size_t kValueSize = 8;
   uint8_t payload[kValueSize];
@@ -125,9 +125,9 @@ class VectorValue : public Value {
 // every string is non-inline
 class StringValue final : public VectorValue<char, Value::Type::kString> {
  public:
-  StringValue(std::shared_ptr<Value>, std::string, store::memory::ArenaAlloc&);
+  StringValue(std::shared_ptr<Value>, std::string, mem::ArenaAlloc&);
 
-  std::string_view str() const {
+  [[nodiscard]] std::string_view str() const {
     return std::string_view{this->begin(), this->size()};
   }
 };
@@ -140,7 +140,8 @@ struct Entry {
 class ObjectValue final : VectorValue<Entry, Value::Type::kObject> {
  public:
   ObjectValue(std::shared_ptr<Value>);
-  ObjectValue(std::shared_ptr<Value>, std::vector<Entry>, store::memory::ArenaAlloc&);
+  ObjectValue(std::shared_ptr<Value>, std::vector<Entry>,
+              mem::ArenaAlloc&);
 
   const Value& operator[](std::string) const;
   const Entry& operator[](size_t i) const {
@@ -148,27 +149,17 @@ class ObjectValue final : VectorValue<Entry, Value::Type::kObject> {
   }
 };
 
-Value::Type Value::getType() const {
+inline Value::Type Value::getType() const {
   switch (this->tag) {
-    case Tag::kShortString:
-      return Value::Type::kString;
-    case Tag::kBoolean:
-      return Value::Type::kBoolean;
-    case Tag::kInt32:
-      return Type::kInt32;
-    case Tag::kFloat32:
-      return Type::kFloat32;
-    case Tag::kString:
-      return Type::kString;
-    case Tag::kObject:
-      return Type::kObject;
-    case Tag::kNull:
-      return Type::kNull;
-  }
-  // unreachable
+    case Tag::kShortString: return Type::kString;
+    case Tag::kBoolean:     return Type::kBoolean;
+    case Tag::kInt32:       return Type::kInt32;
+    case Tag::kFloat32:     return Type::kFloat32;
+    case Tag::kString:      return Type::kString;
+    case Tag::kObject:      return Type::kObject;
+    case Tag::kNull:        return Type::kNull;
+  }  // unreachable
   return Type::kNull;
 }
 
-}  // namespace store::dom
-
-#endif  // ITMO_LLP_STORE_DOM_NODE_H_
+}  // namespace dom

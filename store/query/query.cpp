@@ -1,6 +1,6 @@
 
 #include "query.h"
 
-namespace store::query {
+namespace query {
 
 }

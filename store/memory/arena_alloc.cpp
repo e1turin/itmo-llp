@@ -1,6 +1,6 @@
 
 #include "arena_alloc.h"
 
-namespace store::memory {
+namespace mem {
 
 }

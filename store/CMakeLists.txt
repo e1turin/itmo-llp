@@ -12,6 +12,6 @@ add_library(store STATIC)
 target_include_directories(store PRIVATE ${CMAKE_SOURCE_DIR})
 
 add_subdirectory(dom)
-add_subdirectory(file)
+add_subdirectory(fs)
 add_subdirectory(query)
 add_subdirectory(memory)

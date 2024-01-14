@@ -1,9 +1,8 @@
-#ifndef ITMO_LLP_STORE_MEMORY_ARENA_ALLOC_H_
-#define ITMO_LLP_STORE_MEMORY_ARENA_ALLOC_H_
+#pragma once
 
 #include <cstdint>
 
-namespace store::memory {
+namespace mem {
 
 class ArenaAlloc {
  public:
@@ -12,5 +11,3 @@ class ArenaAlloc {
 };
 
 }
-
-#endif  // ITMO_LLP_STORE_MEMORY_ARENA_ALLOC_H_
