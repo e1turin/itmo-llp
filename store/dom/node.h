@@ -50,8 +50,8 @@ class alignas(8) Value {
 
   template <typename T>
   [[nodiscard]] const T* data_ptr() const {
-    return reinterpret_cast<const T*>(
-        payload);  // maybe used cast_data with offset
+    // maybe used cast_data with offset
+    return reinterpret_cast<const T*>(payload);
   }
 
   template <typename T>
@@ -139,9 +139,8 @@ struct Entry {
 
 class ObjectValue final : VectorValue<Entry, Value::Type::kObject> {
  public:
-  ObjectValue(std::shared_ptr<Value>);
-  ObjectValue(std::shared_ptr<Value>, std::vector<Entry>,
-              mem::ArenaAlloc&);
+  explicit ObjectValue(std::shared_ptr<Value>);
+  ObjectValue(std::shared_ptr<Value>, std::vector<Entry>, mem::ArenaAlloc&);
 
   const Value& operator[](std::string) const;
   const Entry& operator[](size_t i) const {
