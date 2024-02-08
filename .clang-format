@@ -1,6 +1,6 @@
 ---
 Language: Cpp
-BasedOnStyle: Google
+BasedOnStyle: LLVM
 AlignConsecutiveAssignments:
   Enabled: true
   AcrossEmptyLines: false
@@ -12,3 +12,4 @@ AlignConsecutiveShortCaseStatements:
   AcrossEmptyLines: true
   AcrossComments: true
   AlignCaseColons: false
+AlwaysBreakTemplateDeclarations: Yes

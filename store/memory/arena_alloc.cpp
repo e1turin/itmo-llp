@@ -1,6 +1,4 @@
 
 #include "arena_alloc.h"
 
-namespace mem {
-
-}
+namespace mem {}

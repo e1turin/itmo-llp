@@ -1,5 +1,5 @@
 
 target_sources(store
-    PRIVATE
+        PRIVATE
         query.cpp
 )

@@ -1,6 +1,4 @@
 
 #include "file_manager.h"
 
-namespace fs {
-
-}
+namespace fs {}

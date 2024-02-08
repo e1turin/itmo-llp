@@ -5,9 +5,10 @@
 namespace mem {
 
 class ArenaAlloc {
- public:
-  ArenaAlloc(uint8_t* block, size_t size);
- private:
+public:
+  ArenaAlloc(uint8_t *block, size_t size);
+
+private:
 };
 
-}
+} // namespace mem

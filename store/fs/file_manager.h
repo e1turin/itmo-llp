@@ -1,6 +1,6 @@
 #pragma once
 
-#include <store/memory/mmap_manager.h>
+#include <store/memory/memory_manager.h>
 
 #include <memory>
 #include <string_view>
@@ -8,17 +8,18 @@
 namespace fs {
 
 class File {
- public:
+public:
   explicit File(std::string_view);
-  [[nodiscard]] mem::MmapManager MapMemory();
+  [[nodiscard]] mem::MemoryManager MapMemory();
   ~File();
+
 private:
 };
 
 class FileManager {
- public:
+public:
   FileManager();
   [[nodiscard]] std::unique_ptr<File> Open(std::string_view);
 };
 
-}  // namespace fs
+} // namespace fs
