@@ -1,6 +1,7 @@
 
 target_sources(store
         PRIVATE
-        arena_alloc.cpp
+        arena.cpp
+        segment.cpp
         memory_manager.cpp
 )

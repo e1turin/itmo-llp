@@ -1,11 +1,13 @@
 
 #include "node.h"
 
+#include <cstring>
+
 namespace dom {
 
 void Value::init_tagged(Tag t) {
   tag_ = t;
-  memset(payload_, 0, sizeof(payload_));
+  memset(payload_, 0, sizeof payload_);
 }
 
 void Value::init_tagged_pointer(const Tag t, void *p) {

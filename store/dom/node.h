@@ -6,7 +6,7 @@
 #include <string_view>
 #include <vector>
 
-#include "store/memory/arena_alloc.h"
+#include "store/memory/arena.h"
 
 namespace dom {
 
@@ -69,15 +69,15 @@ private:
   Tag tag_ = Tag::kNull;
 
   static constexpr size_t kValueSize = 8;
-  uint8_t payload_[kValueSize];
+  uint8_t payload_[kValueSize] = {0};
 };
 
 class NullValue final : Value {
 public:
-  NullValue(Value *p);
+  explicit NullValue(Value *p);
   static constexpr Type kType = Type::kNull;
 
-  NullValue(std::shared_ptr<Value>);
+  explicit NullValue(std::shared_ptr<Value>);
 };
 
 class BooleanValue final : Value {
