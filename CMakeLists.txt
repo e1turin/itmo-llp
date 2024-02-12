@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.12)
-project(itmo-llp)
+project(itmo-llp
+        VERSION 0.0.0
+        DESCRIPTION "LLP labs"
+        LANGUAGES C CXX
+)
 
-include_directories(store)
+set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD_REQUIRED True)
+
+add_subdirectory(query)
