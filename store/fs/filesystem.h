@@ -7,57 +7,55 @@
 
 namespace fs {
 
-class File {
+/**
+ * platform specific file handle: HANDLE on windows, file descriptor on linux
+ */
+class Handle {
+  HANDLE handle_;
+
 public:
-  /**
-   * platform specific file handle: HANDLE on windows, file descriptor on linux
-   */
-  class Handle {
-    const HANDLE handle_;
+  explicit Handle(HANDLE h) : handle_(h) {}
 
-  public:
-    explicit Handle(const HANDLE h) : handle_(h) {}
+  HANDLE handle() { return handle_; }
+};
 
-    HANDLE handle() { return handle_; }
-  };
+/**
+ * Platform specific file offset type.
+ */
+class Offset {
+public:
+  explicit Offset(const long int n) : offset_(n) {}
 
-  /**
-   * Platform specific file offset type.
-   */
-  class Offset {
-  public:
-    explicit Offset(const long int n) : offset_(n) {}
+  [[nodiscard]] long int value() const { return offset_; }
 
-    [[nodiscard]] long int value() const { return offset_; }
+private:
+  const long int offset_;
+};
 
-  private:
-    const long int offset_;
-  };
-
+/*
   enum Mode {
     kReadOnly,
     kReadWrite,
   };
+*/
 
+class File {
+public:
   [[nodiscard]] Handle handle() const { return handle_; }
-  [[nodiscard]] Mode mode() const { return mode_; }
-
 
 private:
   friend class FileManager;
 
-  explicit File(const Handle h, const Mode m)
-      : handle_(h), mode_(m){};
+  explicit File(const Handle h) : handle_(h){};
 
   ~File() = default;
 
   const Handle handle_;
-  const Mode mode_;
 };
 
 class FileManager {
 public:
-  [[nodiscard]] const File *open(const std::string_view &, File::Mode);
+  [[nodiscard]] const File *open(const std::string_view &);
   bool close(const File *);
 
 private:

@@ -7,8 +7,6 @@
 namespace mem {
 
 class Arena {
-  friend class ArenaAlloc;
-
 public:
   const uint8_t *begin() { return begin_; };
   const uint8_t *end() { return end_; };
