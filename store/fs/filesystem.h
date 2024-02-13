@@ -26,42 +26,42 @@ public:
    */
   class Offset {
   public:
-    explicit Offset(const long int n) : m_offset(n) {}
+    explicit Offset(const long int n) : offset_(n) {}
 
-    [[nodiscard]] long int value() const { return m_offset; }
+    [[nodiscard]] long int value() const { return offset_; }
 
   private:
-    const long int m_offset;
+    const long int offset_;
   };
 
-  enum class Mode : uint8_t {
-    kReadOnly  = 0b0000,
-    kReadWrite = 0b0001,
+  enum Mode {
+    kReadOnly,
+    kReadWrite,
   };
-
-  explicit File(const Handle h, const Mode m)
-      : handle_(std::move(h)), mode_(m){};
 
   [[nodiscard]] Handle handle() const { return handle_; }
   [[nodiscard]] Mode mode() const { return mode_; }
 
-  void close();
-
-  ~File();
 
 private:
+  friend class FileManager;
+
+  explicit File(const Handle h, const Mode m)
+      : handle_(h), mode_(m){};
+
+  ~File() = default;
+
   const Handle handle_;
   const Mode mode_;
 };
 
 class FileManager {
 public:
-  FileManager();
-
-  [[nodiscard]] static std::shared_ptr<File> open(std::string_view);
+  [[nodiscard]] const File *open(const std::string_view &, File::Mode);
+  bool close(const File *);
 
 private:
-  std::vector<std::shared_ptr<File>> m_files;
+  std::vector<File *> files_;
 };
 
 } // namespace fs

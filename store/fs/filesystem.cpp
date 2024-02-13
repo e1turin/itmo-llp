@@ -1,21 +1,46 @@
 #include "filesystem.h"
-#include <fcntl.h>
+#include <iostream>
 
 namespace fs {
 
-File::File(const int fd) : handle_(fd) {}
+const File *FileManager::open(const std::string_view &filename,
+                              File::Mode mode) {
+  DWORD dwAccessMode                = 0;
+  const constexpr DWORD dwShareMode = 0;
 
-std::unique_ptr<File> FileManager::open(const std::string_view filename) {
-  int fd = ::open(filename.data(), O_RDONLY);
-  if (fd == -1)
+  switch (mode) {
+  case File::Mode::kReadWrite: dwAccessMode |= GENERIC_WRITE;
+  case File::Mode::kReadOnly:  dwAccessMode |= GENERIC_READ;
+  }
+
+  const HANDLE hFile =
+      CreateFile(filename.data(), dwAccessMode, dwShareMode, nullptr,
+                 OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);
+
+  if (hFile == INVALID_HANDLE_VALUE) {
+    std::cerr << "ERROR: can't open file " << filename << std::endl;
     return nullptr;
+  }
 
-  return std::make_unique<File>{fd};
+  files_.emplace_back(new File{File::Handle{hFile}, mode});
+
+  return files_.back();
 }
 
- File::~File() {
-  close(handle_);
-}
+bool FileManager::close(const File *file) {
+  auto f = std::find(files_.begin(), files_.end(), file);
+  if (f == files_.end()) {
+    std::cerr << "ERROR: no such file under meneger control" << std::endl;
+    return false;
+  }
 
+  bool bFlag = CloseHandle(file->handle().handle());
+
+  if (bFlag) {
+    files_.erase(f);
+  }
+
+  return bFlag;
+}
 
 } // namespace fs
