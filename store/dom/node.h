@@ -6,8 +6,6 @@
 #include <string_view>
 #include <vector>
 
-#include "store/memory/arena.h"
-
 namespace dom {
 
 class alignas(8) Value {
@@ -125,7 +123,7 @@ public:
 // every string is non-inline for now
 class StringValue final : public VectorValue<char, Value::Type::kString> {
 public:
-  StringValue(std::shared_ptr<Value>, std::string, mem::ArenaAlloc &);
+  StringValue(std::shared_ptr<Value>, std::string);
 
   [[nodiscard]] std::string_view str() const {
     return std::string_view{begin(), size()};
@@ -140,7 +138,7 @@ struct Entry {
 class ObjectValue final : VectorValue<Entry, Value::Type::kObject> {
 public:
   explicit ObjectValue(std::shared_ptr<Value>);
-  ObjectValue(std::shared_ptr<Value>, std::vector<Entry>, mem::ArenaAlloc &);
+  ObjectValue(std::shared_ptr<Value>, std::vector<Entry>);
 
   const Value &operator[](std::string) const;
   const Entry &operator[](size_t i) const { return VectorValue::operator[](i); }

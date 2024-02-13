@@ -15,7 +15,7 @@ const File *FileManager::open(const std::string_view &filename) {
     return nullptr;
   }
 
-  files_.emplace_back(new File{Handle{hFile}});
+  files_.emplace_back(new File{hFile, filename});
 
   return files_.back();
 }
@@ -28,13 +28,24 @@ bool FileManager::close(const File *file) {
     return false;
   }
 
-  bool bFlag = CloseHandle(file->handle().handle());
+  bool bFlag = CloseHandle(file->handle());
 
   if (bFlag) {
-    files_.erase(f);
+    files_.erase(std::move(f));
   }
 
   return bFlag;
 }
+
+FileManager::~FileManager() {
+  for (auto f : files_) {
+    bool bFlag = CloseHandle(f->handle());
+
+    if (!bFlag) {
+      std::cerr << "ERROR: can't close file";
+    }
+  }
+}
+
 
 } // namespace fs
