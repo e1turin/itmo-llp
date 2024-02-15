@@ -1,0 +1,1 @@
+db.select({pole:"takoe"/[ipole:"itakoe2" and ipole:"itakoe3" or pole:"takoe3"]})
