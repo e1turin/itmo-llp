@@ -1,51 +1,43 @@
 #include "memory_manager.h"
-#include "store/fs/filesystem.h"
+#include "store/fs/file.h"
 
 #include <iostream>
 
 namespace mem {
 
-MemoryManager::MemoryManager(std::unique_ptr<fs::FileManager> fm,
-                             std::string_view filename)
-    : file_manager_(std::move(fm)) {
-  file_ = file_manager_->open(filename);
-  if (file_ == nullptr) {
-    throw std::runtime_error("Can't open DB file");
-  }
+MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
 
-  DWORD dwFileSize = GetFileSize(file_->handle(), nullptr);
+  const DWORD dwFileSize = GetFileSize(file_.handle(), nullptr);
 
   if (dwFileSize == INVALID_FILE_SIZE) {
-    throw std::runtime_error("Can't get file size");
+    throw std::runtime_error{"Can't get file size"};
   }
 
   if (dwFileSize == 0) {
     LONG lNewFileSize = 1024;
-    if (SetFilePointer(file_->handle(), lNewFileSize, nullptr, FILE_BEGIN)) {
-      throw std::runtime_error("Can't resize file. It has zero size.");
+    if (SetFilePointer(file_.handle(), lNewFileSize, nullptr, FILE_BEGIN)) {
+      throw std::runtime_error{"Can't resize file. It has zero size"};
     }
   }
 
-  DWORD dwMaximumSizeHigh = 0; // whole file size
-  DWORD dwMaximumSizeLow  = 0;
+  constexpr DWORD dwMaximumSizeHigh = 0; // whole file size
+  constexpr DWORD dwMaximumSizeLow  = 0;
 
   file_map_obj_ =
-      CreateFileMapping(file_->handle(), nullptr, PAGE_READWRITE,
+      CreateFileMapping(file_.handle(), nullptr, PAGE_READWRITE,
                         dwMaximumSizeHigh, dwMaximumSizeLow, nullptr);
 
   if (file_map_obj_ == nullptr) {
-    std::cerr << "ERROR: can't map file into memory; " << GetLastError()
-              << std::endl;
-    throw std::runtime_error("Can't map file");
+    throw std::runtime_error{"Can't map file"};
   }
 
-  DWORD dwFileOffsetHigh     = 0;
-  DWORD dwFileOffsetLow      = 0;
-  DWORD dwNumberOfBytesToMap = 0; // till the end of file
+  constexpr DWORD dwFileOffsetHigh     = 0;
+  constexpr DWORD dwFileOffsetLow      = 0;
+  constexpr DWORD dwNumberOfBytesToMap = 0; // till the end of file
 
-  file_view_begin_ =
+  file_view_begin_ = static_cast<std::byte *>(
       MapViewOfFile(file_map_obj_, FILE_MAP_ALL_ACCESS, dwFileOffsetHigh,
-                    dwFileOffsetLow, dwNumberOfBytesToMap);
+                    dwFileOffsetLow, dwNumberOfBytesToMap));
 }
 
 MemoryManager::~MemoryManager() {
@@ -54,26 +46,43 @@ MemoryManager::~MemoryManager() {
   }
 
   CloseHandle(file_map_obj_);
-  file_manager_->close(file_);
 }
 
-fs::Offset MemoryManager::alloc(size_t size) {
-  const DWORD dwFileSize = GetFileSize(file_->handle(), nullptr);
+fs::Offset MemoryManager::alloc(const size_t size) const {
+  // TODO: check free list
+  // TODO: remap file
 
-  if (dwFileSize == INVALID_FILE_SIZE) {
-    throw std::runtime_error("Can't get file size");
+  DWORD dwFileSizeHigh;
+  const DWORD dwFileSizeLow = GetFileSize(file_.handle(), &dwFileSizeHigh);
+
+  const size_t file_size = (dwFileSizeHigh << 32) + dwFileSizeLow;
+
+  if (dwFileSizeLow == INVALID_FILE_SIZE) {
+    throw std::runtime_error{"Can't get file size"};
   }
 
   // TODO: handle size > unsigned long
-  const LONG lNewFileSize = dwFileSize + size;
+  const size_t new_file_size = file_size + size;
+  const LONG lNewFileSize    = static_cast<LONG>(new_file_size >> 32);
+  // const PLONG lNewFileSizeHigh = reinterpret_cast<const long
+  // *>(&new_file_size) + 1;
 
-  if (SetFilePointer(file_->handle(), lNewFileSize, nullptr, FILE_BEGIN)) {
-    throw std::runtime_error("Can't resize file. It has zero size.");
+  if (SetFilePointer(file_.handle(), lNewFileSize, nullptr, FILE_BEGIN)) {
+    throw std::runtime_error{"Can't resize file. It has zero size."};
   }
 
-  return fs::Offset{lNewFileSize};
+  return fs::Offset{file_size};
 }
 
-size_t MemoryManager::free(fs::Offset, size_t) {}
+size_t MemoryManager::free(const fs::Offset offset, const size_t size) const {
+  memset(address_of(offset), 0, size);
+  return size;
+}
+
+void *MemoryManager::address_of(const fs::Offset offset) const {
+  return file_view_begin_ + offset.value();
+}
+
+bool MemoryManager::remap_file() {}
 
 } // namespace mem

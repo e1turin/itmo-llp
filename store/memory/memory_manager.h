@@ -1,15 +1,13 @@
 #pragma once
-#include <utility>
 
-#include "store/fs/filesystem.h"
-#include <map>
-#include <store/dom/node.h>
+#include "store/fs/file.h"
+#include <store/dom/value.h>
 
 namespace mem {
 
-class MemoryManager {
+class MemoryManager final {
 public:
-  explicit MemoryManager(std::unique_ptr<fs::FileManager>, std::string_view);
+  explicit MemoryManager(fs::File &&);
 
   ~MemoryManager();
 
@@ -19,15 +17,18 @@ public:
   template <typename V>
   bool write(fs::Offset, V);
 
-  fs::Offset alloc(size_t);
+  [[nodiscard]] fs::Offset alloc(size_t) const;
 
-  size_t free(fs::Offset, size_t);
+  [[nodiscard]] size_t free(fs::Offset, size_t) const;
 
 private:
-  std::unique_ptr<fs::FileManager> file_manager_;
-  const fs::File *file_;
+  fs::File file_;
   HANDLE file_map_obj_;
-  LPVOID file_view_begin_;
+  std::byte *file_view_begin_;
+
+  [[nodiscard]] void *address_of(fs::Offset) const;
+
+  bool remap_file();
 };
 
 template <typename V>
