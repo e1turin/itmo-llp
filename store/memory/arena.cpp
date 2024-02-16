@@ -5,7 +5,7 @@ namespace mem {
 ArenaAlloc::ArenaAlloc(LPVOID begin, size_t size)
     : file_view_begin_(begin), view_size_(size) {}
 
-bool ArenaAlloc::reset(LPVOID) {}
+bool ArenaAlloc::reset(std::byte *) {}
 
 Arena *ArenaAlloc::alloc(size_t) {}
 

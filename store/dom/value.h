@@ -3,7 +3,6 @@
 #include <cstdint>
 #include <memory>
 #include <string>
-#include <string_view>
 #include <vector>
 
 namespace dom {
@@ -12,6 +11,7 @@ class alignas(8) Value {
 public:
   enum class Type { kBoolean, kNull, kInt32, kFloat32, kString, kObject };
 
+public:
   [[nodiscard]] Type get_type() const;
 
   template <typename T>
@@ -21,7 +21,6 @@ public:
 
   template <typename T>
   const T &as() const {
-    static_assert(this->is<T>());
     return *reinterpret_cast<const T *>(this);
   }
 
@@ -48,7 +47,6 @@ protected:
 
   template <typename T>
   [[nodiscard]] const T *data_ptr() const {
-    // maybe used cast_data with offset
     return reinterpret_cast<const T *>(payload_);
   }
 
@@ -69,32 +67,38 @@ private:
   uint8_t payload_[kValueSize]       = {0};
 };
 
-class NullValue final : Value {
+class NullValue final : public Value {
 public:
   static constexpr Type kType = Type::kNull;
 
   explicit NullValue();
 };
 
-class BooleanValue final : Value {
+class BoolValue final : public Value {
 public:
   static constexpr Type kType = Type::kBoolean;
 
-  explicit BooleanValue(bool);
+  explicit BoolValue(bool);
+
+  [[nodiscard]] bool get_bool() const;
 };
 
-class Int32Value final : Value {
+class Int32Value final : public Value {
 public:
   static constexpr Type kType = Type::kInt32;
 
-  explicit Int32Value(int32_t);
+  explicit Int32Value(std::int32_t);
+
+  [[nodiscard]] std::int32_t get_int() const;
 };
 
-class Float32Value final : Value {
+class Float32Value final : public Value {
 public:
   static constexpr Type kType = Type::kFloat32;
 
   explicit Float32Value(float);
+
+  [[nodiscard]] float get_float() const;
 };
 
 /**
@@ -114,11 +118,10 @@ public:
   }
 
   [[nodiscard]] const T *end() const {
-    const auto size_ptr = data_ptr<size_t>();
-    return reinterpret_cast<const T *>(size_ptr + 1) + *size_ptr;
+    return reinterpret_cast<const T *>(data_ptr<size_t>() + 1) + size();
   }
 
-  const T &operator[](size_t i) const { return *(begin() + i); }
+  const T &operator[](const size_t i) const { return *(begin() + i); }
 };
 
 /**
@@ -128,9 +131,9 @@ class StringValue final : public VectorValue<char, Value::Type::kString> {
 public:
   explicit StringValue(std::string);
 
-  [[nodiscard]] std::string_view str() const {
-    return std::string_view{begin(), size()};
-  }
+  // [[nodiscard]] std::string_view get_string() const {
+  //   return std::string_view{begin(), size()};
+  // }
 };
 
 struct Entry {
@@ -138,13 +141,15 @@ struct Entry {
   Value value;
 };
 
-class ObjectValue final : VectorValue<Entry, Value::Type::kObject> {
+class ObjectValue final : public VectorValue<Entry, Value::Type::kObject> {
 public:
   explicit ObjectValue();
   explicit ObjectValue(std::vector<Entry>);
 
-  const Value &operator[](std::string) const;
-  const Entry &operator[](size_t i) const { return VectorValue::operator[](i); }
+  const Value &operator[](std::string_view) const;
+  const Entry &operator[](const size_t i) const {
+    return VectorValue::operator[](i);
+  }
 };
 
 inline Value::Type Value::get_type() const {

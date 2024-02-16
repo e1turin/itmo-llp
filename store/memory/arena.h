@@ -16,7 +16,7 @@ private:
 class ArenaAlloc final {
 public:
   explicit ArenaAlloc(LPVOID, size_t);
-  bool reset(LPVOID);
+  bool reset(std::byte *);
   Arena *alloc(size_t);
   bool free(Arena *);
 private:

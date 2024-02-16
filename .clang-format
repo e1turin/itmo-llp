@@ -13,3 +13,4 @@ AlignConsecutiveShortCaseStatements:
   AcrossComments: true
   AlignCaseColons: false
 AlwaysBreakTemplateDeclarations: Yes
+BreakAfterAttributes: Always

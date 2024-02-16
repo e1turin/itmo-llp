@@ -48,6 +48,33 @@ MemoryManager::~MemoryManager() {
   CloseHandle(file_map_obj_);
 }
 
+/* MemoryManager::read overloads */
+
+std::int32_t MemoryManager::read(const dom::Int32Value &v) {
+  return v.get_int();
+}
+float MemoryManager::read(const dom::Float32Value &v) { return v.get_float(); }
+bool MemoryManager::read(const dom::BoolValue &v) { return v.get_bool(); }
+
+// todo: explicit type check
+std::string_view MemoryManager::read(const dom::StringValue &obj) const {}
+char MemoryManager::read(const dom::StringValue &obj, size_t idx) const {}
+std::unique_ptr<std::vector<dom::Entry>>
+MemoryManager::read(const dom::ObjectValue &obj) const {}
+std::unique_ptr<dom::Entry> MemoryManager::read(const dom::ObjectValue &obj,
+                                                size_t idx) const {}
+std::unique_ptr<dom::Value> MemoryManager::read(const dom::ObjectValue &obj,
+                                                std::string_view key) const {}
+
+/* MemoryManager::write overloads */
+
+bool MemoryManager::write(dom::ObjectValue &obj, std::string_view key,
+                          std::int32_t val) {}
+bool MemoryManager::write(dom::ObjectValue &obj, std::string_view key,
+                          float val) {}
+bool MemoryManager::write(dom::ObjectValue &obj, std::string_view key,
+                          bool val) {}
+
 fs::Offset MemoryManager::alloc(const size_t size) const {
   // TODO: check free list
   // TODO: remap file
