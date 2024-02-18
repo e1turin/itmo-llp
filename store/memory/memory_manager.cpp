@@ -38,6 +38,7 @@ MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
   file_view_begin_ = static_cast<std::byte *>(
       MapViewOfFile(file_map_obj_, FILE_MAP_ALL_ACCESS, dwFileOffsetHigh,
                     dwFileOffsetLow, dwNumberOfBytesToMap));
+  /* TODO: NEW AREAN ALLOCATOR */
 }
 
 MemoryManager::~MemoryManager() {
@@ -48,105 +49,11 @@ MemoryManager::~MemoryManager() {
   CloseHandle(file_map_obj_);
 }
 
-/* MemoryManager::read overloads */
-
-std::int32_t MemoryManager::read(const dom::Int32Value &v) {
-  return v.get_int();
-}
-float MemoryManager::read(const dom::Float32Value &v) { return v.get_float(); }
-bool MemoryManager::read(const dom::BoolValue &v) { return v.get_bool(); }
-
-// todo: explicit type check
-std::optional<std::string_view>
-MemoryManager::read(const dom::StringValue &str) const {
-  fs::Offset offset = str.get_ref();
-  if (!is_valid(offset)) {
-    return std::nullopt;
-  }
-  std::byte *data = address_of(offset);
-
-  auto size  = reinterpret_cast<size_t *>(data);
-  auto begin = reinterpret_cast<char *>(size + 1);
-  return std::move(std::string{begin, *size});
-}
-
-std::optional<char> MemoryManager::read(const dom::StringValue &str,
-                                        size_t idx) const {
-  fs::Offset offset = str.get_ref();
-  if (!is_valid(offset)) {
-    return std::nullopt;
-  }
-  std::byte *data = address_of(offset);
-
-  auto size = reinterpret_cast<size_t *>(data);
-  if (idx >= *size) {
-    return std::nullopt;
-  }
-  auto begin = reinterpret_cast<char *>(size + 1);
-  return *(begin + idx);
-}
-
-std::unique_ptr<std::vector<dom::Entry>>
-MemoryManager::read(const dom::ObjectValue &obj) const {
-  fs::Offset offset = obj.get_ref();
-  if (!is_valid(offset)) {
-    return nullptr;
-  }
-  std::byte *data = address_of(offset);
-
-  auto size  = reinterpret_cast<size_t *>(data);
-  auto begin = reinterpret_cast<dom::Entry *>(size + 1);
-  auto end   = begin + *size;
-  return std::make_unique<std::vector<dom::Entry>>(begin, end);
-}
-
-std::unique_ptr<dom::Entry> MemoryManager::read(const dom::ObjectValue &obj,
-                                                size_t idx) const {
-  fs::Offset offset = obj.get_ref();
-  if (!is_valid(offset)) {
-    return nullptr;
-  }
-  std::byte *data = address_of(offset);
-
-  auto size = reinterpret_cast<size_t *>(data);
-  if (idx >= *size) {
-    return nullptr;
-  }
-  auto begin = reinterpret_cast<dom::Entry *>(size + 1);
-  return std::make_unique<dom::Entry>(*(begin + idx));
-}
-
-std::unique_ptr<dom::Value> MemoryManager::read(const dom::ObjectValue &obj,
-                                                std::string_view key) const {
-  fs::Offset offset = obj.get_ref();
-  if (!is_valid(offset)) {
-    return nullptr;
-  }
-  std::byte *data = address_of(offset);
-
-  auto size       = reinterpret_cast<size_t *>(data);
-  auto begin      = reinterpret_cast<dom::Entry *>(size + 1);
-  dom::Entry *end = begin + *size;
-
-  auto val = std::find_if(begin, end, [&](dom::Entry it) -> bool {
-    std::optional<std::string_view> str = read(it.key);
-    if (str->empty()) {
-      return false;
-    } else {
-      return str.value() == key;
-    }
-  });
-  return std::make_unique<dom::Value>(val->value);
-}
+/* MemoryManager::read overloads  */
 
 /* MemoryManager::write overloads */
 
-bool MemoryManager::write(dom::ObjectValue &obj, std::string_view key,
-                          std::int32_t val) {}
-bool MemoryManager::write(dom::ObjectValue &obj, std::string_view key,
-                          float val) {}
-bool MemoryManager::write(dom::ObjectValue &obj, std::string_view key,
-                          bool val) {}
+/* MemoryManager::write overloads */
 
 fs::Offset MemoryManager::alloc(const size_t size) const {
   // TODO: check free list
@@ -161,13 +68,12 @@ fs::Offset MemoryManager::alloc(const size_t size) const {
     throw std::runtime_error{"Can't get file size"};
   }
 
-  // TODO: handle size > unsigned long
+  // TODO use ..Ex alternative
   const size_t new_file_size = file_size + size;
   const LONG lNewFileSize    = static_cast<LONG>(new_file_size >> 32);
   // const PLONG lNewFileSizeHigh = reinterpret_cast<const long
   // *>(&new_file_size) + 1;
 
-  //TODO use ..Ex alternative
   if (SetFilePointer(file_.handle(), lNewFileSize, nullptr, FILE_BEGIN)) {
     throw std::runtime_error{"Can't resize file. It has zero size."};
   }
@@ -176,7 +82,7 @@ fs::Offset MemoryManager::alloc(const size_t size) const {
 }
 
 size_t MemoryManager::free(const fs::Offset offset, const size_t size) const {
-  //TODO good freeing
+  // TODO good freeing
   memset(address_of(offset), 0, size);
   return size;
 }

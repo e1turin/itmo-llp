@@ -8,80 +8,78 @@ Storage::Storage(std::string_view file_name) {
   memm_ = std::make_unique<mem::MemoryManager>(std::move(db_file));
 }
 
-std::unique_ptr<dom::Value> Storage::root() const {
-  return std::move(memm_->read(fs::Offset(0)));
+std::optional<dom::Value> Storage::root() const {
+  return memm_->read<dom::Value>(fs::Offset(0));
 }
 
 /* Storage::read overloads */
 
-std::optional<std::int32_t> Storage::read(const dom::Int32Value &v) const {
+std::optional<std::int32_t> Storage::read(const dom::Int32Value &v) {
   if (!v.is<dom::Int32Value>()) {
     return std::nullopt;
   }
-  return memm_->read(v);
+  return v.get_int();
 }
 
-std::optional<float> Storage::read(const dom::Float32Value &v) const {
+std::optional<float> Storage::read(const dom::Float32Value &v) {
   if (!v.is<dom::Float32Value>()) {
     return std::nullopt;
   }
-  return memm_->read(v);
+  return v.get_float();
 }
 
-std::optional<bool> Storage::read(const dom::BoolValue &v) const {
+std::optional<bool> Storage::read(const dom::BoolValue &v) {
   if (!v.is<dom::BoolValue>()) {
     return std::nullopt;
   }
-  return memm_->read(v);
+  return v.get_bool();
 }
 
 std::optional<std::string_view> Storage::read(const dom::StringValue &v) const {
   if (!v.is<dom::StringValue>()) {
     return std::nullopt;
   }
-  return memm_->read(v);
+  std::optional<std::vector<char>> chars = memm_->read_all<char>(v.get_ref());
+  if (!chars.has_value()) {
+    return std::nullopt;
+  }
+  return std::string_view{chars->data(), chars->size()};
 }
 
-std::unique_ptr<std::vector<dom::Entry>>
+std::optional<std::vector<dom::Entry>>
 Storage::read(const dom::ObjectValue &v) const {
   if (!v.is<dom::ObjectValue>()) {
-    return nullptr;
+    return std::nullopt;
   }
-  return std::move(memm_->read(v));
+  std::optional<std::vector<dom::Entry>> chars =
+      memm_->read_all<dom::Entry>(v.get_ref());
+  return std::move(chars);
 }
 
 /* Storage::get overloads */
 
-std::unique_ptr<dom::Value> Storage::get(const dom::ObjectValue &obj,
-                                         const std::string_view key) const {
+std::optional<dom::Value> Storage::get(const dom::ObjectValue &obj,
+                                       const std::string_view key) const {
   if (!obj.is<dom::ObjectValue>()) {
-    return nullptr;
+    return std::nullopt;
   }
-  return std::move(memm_->read(obj, key));
+  /* todo optimize with additional dangerous method accessed mapped memory */
+  std::optional<std::vector<dom::Entry>> entries =
+      memm_->read_all<dom::Entry>(obj.get_ref());
+  if (!entries.has_value()) {
+    return std::nullopt;
+  }
+  auto entry =
+      std::find_if(entries->begin(), entries->end(), [&](dom::Entry &it) {
+        std::optional<std::string_view> str = read(it.key);
+        return str.has_value() && str == key;
+      });
+  if (entry == entries->end()) {
+    return std::nullopt;
+  }
+  return entry->value;
 }
 
 /* Storage::set overloads */
 
-size_t Storage::set(dom::ObjectValue &obj, const std::string_view key,
-                    const std::string_view val) const {
-  if (!obj.is<dom::ObjectValue>()) {
-    return -1;
-  }
-  return memm_->write(obj, key, val);
-}
-
-/* Store::truncate overloads */
-
-bool Storage::truncate(dom::ObjectValue &obj, const size_t idx) const {
-  if (!obj.is<dom::ObjectValue>()) {
-    return false;
-  }
-  return memm_->free(obj, idx) != 0;
-}
-
-bool Storage::truncate(dom::ObjectValue &obj, const std::string_view key) const {
-  if (!obj.is<dom::ObjectValue>()) {
-    return false;
-  }
-  return memm_->free(obj, key) != 0;
-}
+/* Storage::truncate overloads */

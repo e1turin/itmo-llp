@@ -8,32 +8,29 @@ class Storage final {
 public:
   explicit Storage(std::string_view);
 
-  [[nodiscard]]
-  std::unique_ptr<dom::Value> root() const;
+  [[nodiscard]] // todo: const Value
+  std::optional<dom::Value> root() const;
 
+  /* todo: std::variant for result with error code */
   [[nodiscard]]
-  std::optional<std::int32_t> read(const dom::Int32Value &) const;
+  static std::optional<std::int32_t> read(const dom::Int32Value &) ;
   [[nodiscard]]
-  std::optional<float> read(const dom::Float32Value &) const;
+  static std::optional<float> read(const dom::Float32Value &) ;
   [[nodiscard]]
-  std::optional<bool> read(const dom::BoolValue &) const;
+  static std::optional<bool> read(const dom::BoolValue &) ;
   [[nodiscard]]
   std::optional<std::string_view> read(const dom::StringValue &) const;
   [[nodiscard]]
-  std::unique_ptr<std::vector<dom::Entry>> read(const dom::ObjectValue &) const;
+  std::optional<std::vector<dom::Entry>> read(const dom::ObjectValue &) const;
 
   template <typename T, dom::Value::Type vtype>
   [[nodiscard]]
   std::optional<T> get(const dom::VectorValue<T, vtype> &, size_t) const;
-
   [[nodiscard]]
-  std::unique_ptr<dom::Value> get(const dom::ObjectValue &,
-                                  std::string_view) const;
+  std::optional<dom::Value> get(const dom::ObjectValue &,
+                                std::string_view) const;
 
-  // TODO set value by index
-  // template <typename T, dom::Value::Type vtype>
-  // dom::Value set(dom::VectorValue<T, vtype>, size_t, T) const;
-
+  /* todo set value by index for string and mb obj */
   template <typename T>
   bool set(dom::ObjectValue &, std::string_view, T) const;
   size_t set(dom::ObjectValue &, std::string_view, std::string_view) const;
@@ -48,32 +45,13 @@ private:
   std::unique_ptr<mem::MemoryManager> memm_;
 };
 
+
 template <typename T, dom::Value::Type vtype>
-std::optional<T> Storage::get(const dom::VectorValue<T, vtype> &v,
+std::optional<T> Storage::get(const dom::VectorValue<T, vtype> &vec,
                               size_t i) const {
-  if (v.template is<dom::StringValue>()) {
-    return memm_->read(v.template as<dom::StringValue>(), i);
+  auto vals = read(vec);
+  if(!vals.has_value() || i >= vals->size()) {
+    return std::nullopt;
   }
-  if (v.template is<dom::ObjectValue>()) {
-    return memm_->read(v.template as<dom::ObjectValue>(), i);
-  }
-  return std::nullopt;
-}
-
-template <typename T>
-bool Storage::set(dom::ObjectValue &obj, const std::string_view key,
-                  T val) const {
-  if (!obj.is<dom::ObjectValue>()) {
-    return false;
-  }
-  return memm_->write(obj, key, val);
-}
-
-template <Derived<dom::ObjectValue>>
-std::unique_ptr<dom::ObjectValue>
-Storage::set(dom::ObjectValue &obj, std::string_view key, size_t size) const {
-  if (!obj.is<dom::ObjectValue>()) {
-    return nullptr;
-  }
-  return memm_->write<dom::ObjectValue>(obj, key, size);
+  return vals[i];
 }
