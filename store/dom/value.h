@@ -15,6 +15,7 @@ public:
 public:
   [[nodiscard]]
   Type get_type() const;
+  bool is_primitive() const;
 
   template <typename T>
   [[nodiscard]]
@@ -162,9 +163,22 @@ inline Value::Type Value::get_type() const {
   case Tag::kFloat32:     return Type::kFloat32;
   case Tag::kString:      return Type::kString;
   case Tag::kObject:      return Type::kObject;
-  case Tag::kNull:        return Type::kNull;
-  } // unreachable
-  return Type::kNull;
+  case Tag::kNull:
+  default:                return Type::kNull;
+  }
+}
+
+inline bool Value::is_primitive() const {
+  switch (tag_) {
+  case Tag::kBoolean:
+  case Tag::kInt32:
+  case Tag::kFloat32:
+  case Tag::kShortString: return true;
+  case Tag::kString:
+  case Tag::kObject:
+  case Tag::kNull:
+  default:                return false;
+  }
 }
 
 } // namespace dom
