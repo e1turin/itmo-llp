@@ -41,8 +41,8 @@ public:
   std::unique_ptr<dom::ObjectValue> set(dom::ObjectValue &, std::string_view,
                                         size_t) const;
 
-  bool trancate(dom::ObjectValue &, size_t) const;
-  bool trancate(dom::ObjectValue &, std::string_view) const;
+  bool truncate(dom::ObjectValue &, size_t) const;
+  bool truncate(dom::ObjectValue &, std::string_view) const;
 
 private:
   std::unique_ptr<mem::MemoryManager> memm_;
@@ -68,11 +68,12 @@ bool Storage::set(dom::ObjectValue &obj, const std::string_view key,
   }
   return memm_->write(obj, key, val);
 }
+
 template <Derived<dom::ObjectValue>>
 std::unique_ptr<dom::ObjectValue>
 Storage::set(dom::ObjectValue &obj, std::string_view key, size_t size) const {
   if (!obj.is<dom::ObjectValue>()) {
-    return false;
+    return nullptr;
   }
   return memm_->write<dom::ObjectValue>(obj, key, size);
 }

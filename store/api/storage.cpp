@@ -57,7 +57,7 @@ std::unique_ptr<dom::Value> Storage::get(const dom::ObjectValue &obj,
   if (!obj.is<dom::ObjectValue>()) {
     return nullptr;
   }
-  return memm_->read(obj, key);
+  return std::move(memm_->read(obj, key));
 }
 
 /* Storage::set overloads */
@@ -70,16 +70,16 @@ size_t Storage::set(dom::ObjectValue &obj, const std::string_view key,
   return memm_->write(obj, key, val);
 }
 
-/* Store::trancate overloads */
+/* Store::truncate overloads */
 
-bool Storage::trancate(dom::ObjectValue &obj, const size_t idx) const {
+bool Storage::truncate(dom::ObjectValue &obj, const size_t idx) const {
   if (!obj.is<dom::ObjectValue>()) {
     return false;
   }
   return memm_->free(obj, idx) != 0;
 }
 
-bool Storage::trancate(dom::ObjectValue &obj, const std::string_view key) const {
+bool Storage::truncate(dom::ObjectValue &obj, const std::string_view key) const {
   if (!obj.is<dom::ObjectValue>()) {
     return false;
   }

@@ -3,6 +3,7 @@
 #include <store/dom/value.h>
 #include <store/fs/file.h>
 #include <util/util.h>
+#include <optional>
 
 namespace mem {
 
@@ -14,17 +15,17 @@ public:
 
   [[nodiscard]] std::unique_ptr<dom::Value> read(fs::Offset) const;
 
-  static [[nodiscard]]
-  std::int32_t read(const dom::Int32Value &);
-  static [[nodiscard]]
-  float read(const dom::Float32Value &);
-  static [[nodiscard]]
-  bool read(const dom::BoolValue &);
+  [[nodiscard]]
+  static std::int32_t read(const dom::Int32Value &);
+  [[nodiscard]]
+  static float read(const dom::Float32Value &);
+  [[nodiscard]]
+  static bool read(const dom::BoolValue &);
 
   [[nodiscard]]
-  std::string_view read(const dom::StringValue &) const;
+  std::optional<std::string_view> read(const dom::StringValue &) const;
   [[nodiscard]]
-  char read(const dom::StringValue &, size_t) const;
+  std::optional<char> read(const dom::StringValue &, size_t) const;
   [[nodiscard]]
   std::unique_ptr<std::vector<dom::Entry>> read(const dom::ObjectValue &) const;
   [[nodiscard]]
@@ -55,13 +56,10 @@ private:
   [[nodiscard]] fs::Offset alloc(size_t) const;
   [[nodiscard]] size_t free(fs::Offset, size_t) const;
 
-  [[nodiscard]] void *address_of(fs::Offset) const;
+  [[nodiscard]] std::byte *address_of(fs::Offset) const;
+  [[bodiscard]] bool is_valid(fs::Offset) const;
 
-  bool remap_file();
+  bool remap_file(size_t);
 };
-
-template <Derived<dom::ObjectValue>>
-std::unique_ptr<dom::ObjectValue>
-MemoryManager::write(dom::ObjectValue &, std::string_view, size_t size) {}
 
 } // namespace mem

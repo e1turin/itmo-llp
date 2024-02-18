@@ -57,14 +57,87 @@ float MemoryManager::read(const dom::Float32Value &v) { return v.get_float(); }
 bool MemoryManager::read(const dom::BoolValue &v) { return v.get_bool(); }
 
 // todo: explicit type check
-std::string_view MemoryManager::read(const dom::StringValue &obj) const {}
-char MemoryManager::read(const dom::StringValue &obj, size_t idx) const {}
+std::optional<std::string_view>
+MemoryManager::read(const dom::StringValue &str) const {
+  fs::Offset offset = str.get_ref();
+  if (!is_valid(offset)) {
+    return std::nullopt;
+  }
+  std::byte *data = address_of(offset);
+
+  auto size  = reinterpret_cast<size_t *>(data);
+  auto begin = reinterpret_cast<char *>(size + 1);
+  return std::move(std::string{begin, *size});
+}
+
+std::optional<char> MemoryManager::read(const dom::StringValue &str,
+                                        size_t idx) const {
+  fs::Offset offset = str.get_ref();
+  if (!is_valid(offset)) {
+    return std::nullopt;
+  }
+  std::byte *data = address_of(offset);
+
+  auto size = reinterpret_cast<size_t *>(data);
+  if (idx >= *size) {
+    return std::nullopt;
+  }
+  auto begin = reinterpret_cast<char *>(size + 1);
+  return *(begin + idx);
+}
+
 std::unique_ptr<std::vector<dom::Entry>>
-MemoryManager::read(const dom::ObjectValue &obj) const {}
+MemoryManager::read(const dom::ObjectValue &obj) const {
+  fs::Offset offset = obj.get_ref();
+  if (!is_valid(offset)) {
+    return nullptr;
+  }
+  std::byte *data = address_of(offset);
+
+  auto size  = reinterpret_cast<size_t *>(data);
+  auto begin = reinterpret_cast<dom::Entry *>(size + 1);
+  auto end   = begin + *size;
+  return std::make_unique<std::vector<dom::Entry>>(begin, end);
+}
+
 std::unique_ptr<dom::Entry> MemoryManager::read(const dom::ObjectValue &obj,
-                                                size_t idx) const {}
+                                                size_t idx) const {
+  fs::Offset offset = obj.get_ref();
+  if (!is_valid(offset)) {
+    return nullptr;
+  }
+  std::byte *data = address_of(offset);
+
+  auto size = reinterpret_cast<size_t *>(data);
+  if (idx >= *size) {
+    return nullptr;
+  }
+  auto begin = reinterpret_cast<dom::Entry *>(size + 1);
+  return std::make_unique<dom::Entry>(*(begin + idx));
+}
+
 std::unique_ptr<dom::Value> MemoryManager::read(const dom::ObjectValue &obj,
-                                                std::string_view key) const {}
+                                                std::string_view key) const {
+  fs::Offset offset = obj.get_ref();
+  if (!is_valid(offset)) {
+    return nullptr;
+  }
+  std::byte *data = address_of(offset);
+
+  auto size       = reinterpret_cast<size_t *>(data);
+  auto begin      = reinterpret_cast<dom::Entry *>(size + 1);
+  dom::Entry *end = begin + *size;
+
+  auto val = std::find_if(begin, end, [&](dom::Entry it) -> bool {
+    std::optional<std::string_view> str = read(it.key);
+    if (str->empty()) {
+      return false;
+    } else {
+      return str.value() == key;
+    }
+  });
+  return std::make_unique<dom::Value>(val->value);
+}
 
 /* MemoryManager::write overloads */
 
@@ -94,6 +167,7 @@ fs::Offset MemoryManager::alloc(const size_t size) const {
   // const PLONG lNewFileSizeHigh = reinterpret_cast<const long
   // *>(&new_file_size) + 1;
 
+  //TODO use ..Ex alternative
   if (SetFilePointer(file_.handle(), lNewFileSize, nullptr, FILE_BEGIN)) {
     throw std::runtime_error{"Can't resize file. It has zero size."};
   }
@@ -102,14 +176,21 @@ fs::Offset MemoryManager::alloc(const size_t size) const {
 }
 
 size_t MemoryManager::free(const fs::Offset offset, const size_t size) const {
+  //TODO good freeing
   memset(address_of(offset), 0, size);
   return size;
 }
 
-void *MemoryManager::address_of(const fs::Offset offset) const {
+std::byte *MemoryManager::address_of(const fs::Offset offset) const {
   return file_view_begin_ + offset.value();
 }
 
-bool MemoryManager::remap_file() {}
+bool MemoryManager::is_valid(fs::Offset offset) const {
+  if (offset.value() == 0) {
+    return false;
+  } else {
+    return true;
+  }
+}
 
 } // namespace mem

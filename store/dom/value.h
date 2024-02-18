@@ -1,5 +1,6 @@
 #pragma once
 
+#include "store/fs/file.h"
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -12,10 +13,12 @@ public:
   enum class Type { kBoolean, kNull, kInt32, kFloat32, kString, kObject };
 
 public:
-  [[nodiscard]] Type get_type() const;
+  [[nodiscard]]
+  Type get_type() const;
 
   template <typename T>
-  [[nodiscard]] bool is() const {
+  [[nodiscard]]
+  bool is() const {
     return get_type() == T::kType;
   }
 
@@ -31,7 +34,8 @@ protected:
        objects aligned as 64 bit. */
 
     // Binary values can be used instead, but now I am mot saving memory.
-    kNull        = 'N', // = 0b0000'0000 // no payload
+    kNull = 'N', // = 0b0000'0000 // no payload, must be replaced by obj with 0
+                 // reference
     kShortString = 'H', // = 0b0000'0001 // inline value, unused for now
     kBoolean     = 'B', // = 0b0000'0010 // inline value
     kInt32       = 'I', // = 0b0000'0011 // inline value
@@ -43,10 +47,10 @@ protected:
 
   void init_tagged(Tag);
   void init_tagged_pointer(Tag, void *);
-  void set_parent(Value);
 
   template <typename T>
-  [[nodiscard]] const T *data_ptr() const {
+  [[nodiscard]]
+  const T *data() const {
     return reinterpret_cast<const T *>(payload_);
   }
 
@@ -64,7 +68,7 @@ private:
   Tag tag_ = Tag::kNull;
 
   static constexpr size_t kValueSize = 8;
-  uint8_t payload_[kValueSize]       = {0};
+  std::uint8_t payload_[kValueSize]  = {0};
 };
 
 class NullValue final : public Value {
@@ -80,7 +84,8 @@ public:
 
   explicit BoolValue(bool);
 
-  [[nodiscard]] bool get_bool() const;
+  [[nodiscard]]
+  bool get_bool() const;
 };
 
 class Int32Value final : public Value {
@@ -89,7 +94,8 @@ public:
 
   explicit Int32Value(std::int32_t);
 
-  [[nodiscard]] std::int32_t get_int() const;
+  [[nodiscard]]
+  std::int32_t get_int() const;
 };
 
 class Float32Value final : public Value {
@@ -98,7 +104,8 @@ public:
 
   explicit Float32Value(float);
 
-  [[nodiscard]] float get_float() const;
+  [[nodiscard]]
+  float get_float() const;
 };
 
 /**
@@ -110,18 +117,10 @@ class VectorValue : public Value {
 public:
   static constexpr Type kType = vtype;
 
-  [[nodiscard]] size_t size() const { return *data_ptr<size_t>(); }
-
-  [[nodiscard]] const T *begin() const {
-    const auto size_ptr = data_ptr<size_t>();
-    return reinterpret_cast<const T *>(size_ptr + 1);
+  [[nodiscard]]
+  fs::Offset get_ref() const {
+    return fs::Offset(*data<size_t>());
   }
-
-  [[nodiscard]] const T *end() const {
-    return reinterpret_cast<const T *>(data_ptr<size_t>() + 1) + size();
-  }
-
-  const T &operator[](const size_t i) const { return *(begin() + i); }
 };
 
 /**
@@ -143,13 +142,16 @@ struct Entry {
 
 class ObjectValue final : public VectorValue<Entry, Value::Type::kObject> {
 public:
-  explicit ObjectValue();
   explicit ObjectValue(std::vector<Entry>);
+  static ObjectValue null_object() { return ObjectValue(); }
 
-  const Value &operator[](std::string_view) const;
-  const Entry &operator[](const size_t i) const {
-    return VectorValue::operator[](i);
-  }
+private:
+  explicit ObjectValue();
+
+  //  const Value &operator[](std::string_view) const;
+  //  const Entry &operator[](const size_t i) const {
+  //    return VectorValue::operator[](i);
+  //  }
 };
 
 inline Value::Type Value::get_type() const {
