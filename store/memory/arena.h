@@ -16,15 +16,23 @@ private:
 
 class ArenaAlloc final {
 public:
-  explicit ArenaAlloc(std::byte *, size_t);
-  std::byte *alloc(size_t);
+  using MetaInfo = FileHeader *;
+
+  ArenaAlloc(MetaInfo meta_info, std::byte *data)
+      : meta_info_(meta_info), data_(data) {}
+
+  /**
+   * Allocates arena of memory where can be stored `size` of bytes.
+   * @param size Amount of bytes to allocate.
+   * @param lack Amount of bytes that are not enough to allocate required `size`.
+   * @return Pointer to memory where can be writen.
+   */
+  std::byte *alloc(size_t, size_t &);
   bool free(Arena *);
-  bool reload(std::byte *);
 
 private:
-  std::byte *file_view_begin_;
-  size_t view_size_;
-  std::vector<Arena> free_begin_arenas_;
+  MetaInfo meta_info_;
+  std::byte *data_;
 };
 
 } // namespace mem

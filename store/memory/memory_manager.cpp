@@ -2,83 +2,67 @@
 #include "store/fs/file.h"
 
 #include <iostream>
+#include <format>
 
 namespace mem {
 
 MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
-
-  const DWORD dwFileSize = GetFileSize(file_.handle(), nullptr);
-
-  if (dwFileSize == INVALID_FILE_SIZE) {
-    throw std::runtime_error{"Can't get file size"};
+  LARGE_INTEGER liFileSize;
+  if (!GetFileSizeEx(file_.handle(), &liFileSize)) {
+    throw std::runtime_error{"Can't get file size."};
   }
-
-  if (dwFileSize == 0) {
-    LONG lNewFileSize = 1024;
-    if (SetFilePointer(file_.handle(), lNewFileSize, nullptr, FILE_BEGIN)) {
-      throw std::runtime_error{"Can't resize file. It has zero size"};
+  if (liFileSize.QuadPart == 0ll) {
+    liFileSize.QuadPart = 1 << 12; // 4 KB
+    if (!SetFilePointerEx(file_.handle(), liFileSize, nullptr, FILE_BEGIN)) {
+      throw std::runtime_error{"Can't resize file. It still has zero size."};
     }
   }
 
-  constexpr DWORD dwMaximumSizeHigh = 0; // whole file size
-  constexpr DWORD dwMaximumSizeLow  = 0;
+  constexpr DWORD dwMaximumSizeHigh = 0; // To map size equal to
+  constexpr DWORD dwMaximumSizeLow  = 0; // the whole file size.
 
   file_map_obj_ =
       CreateFileMapping(file_.handle(), nullptr, PAGE_READWRITE,
                         dwMaximumSizeHigh, dwMaximumSizeLow, nullptr);
 
   if (file_map_obj_ == nullptr) {
-    throw std::runtime_error{"Can't map file"};
+    throw std::runtime_error{"Can't map file."};
   }
 
   constexpr DWORD dwFileOffsetHigh     = 0;
   constexpr DWORD dwFileOffsetLow      = 0;
-  constexpr DWORD dwNumberOfBytesToMap = 0; // till the end of file
+  constexpr DWORD dwNumberOfBytesToMap = 0; // Till the end of file.
 
-  file_view_begin_ = static_cast<std::byte *>(
+  file_view_.view_ptr = static_cast<void *>(
       MapViewOfFile(file_map_obj_, FILE_MAP_ALL_ACCESS, dwFileOffsetHigh,
                     dwFileOffsetLow, dwNumberOfBytesToMap));
-  /* TODO: NEW AREAN ALLOCATOR */
+
+  alloc_ = std::make_unique<mem::ArenaAlloc>();
 }
 
 MemoryManager::~MemoryManager() {
-  if (!UnmapViewOfFile(file_view_begin_)) {
+  if (!UnmapViewOfFile(file_view_.view_ptr)) {
     std::cerr << "ERROR: Can't unmap file" << std::endl;
   }
 
   CloseHandle(file_map_obj_);
 }
 
-/* MemoryManager::read overloads  */
-
-/* MemoryManager::write overloads */
-
 /* MemoryManager::write overloads */
 
 fs::Offset MemoryManager::alloc(const size_t size) const {
-  // TODO: check free list
-  // TODO: remap file
-
-  DWORD dwFileSizeHigh;
-  const DWORD dwFileSizeLow = GetFileSize(file_.handle(), &dwFileSizeHigh);
-
-  const size_t file_size = (dwFileSizeHigh << 32) + dwFileSizeLow;
-
-  if (dwFileSizeLow == INVALID_FILE_SIZE) {
-    throw std::runtime_error{"Can't get file size"};
+  LARGE_INTEGER liFileSize;
+  if (!GetFileSizeEx(file_.handle(), &liFileSize)) {
+    throw std::runtime_error{"Can't get file size."};
   }
 
-  // TODO use ..Ex alternative
-  const size_t new_file_size = file_size + size;
-  const LONG lNewFileSize    = static_cast<LONG>(new_file_size >> 32);
-  // const PLONG lNewFileSizeHigh = reinterpret_cast<const long
-  // *>(&new_file_size) + 1;
+  liFileSize.QuadPart += size;
 
-  if (SetFilePointer(file_.handle(), lNewFileSize, nullptr, FILE_BEGIN)) {
-    throw std::runtime_error{"Can't resize file. It has zero size."};
+  if (!SetFilePointerEx(file_.handle(), liFileSize, nullptr, FILE_BEGIN)) {
+    throw std::runtime_error{std::format("Can't resize file for {} by {}", liFileSize.QuadPart, size)};
   }
 
-  return fs::Offset{file_size};
+  return fs::Offset{static_cast<size_t>(liFileSize.QuadPart)};
 }
 
 size_t MemoryManager::free(const fs::Offset offset, const size_t size) const {
@@ -88,7 +72,7 @@ size_t MemoryManager::free(const fs::Offset offset, const size_t size) const {
 }
 
 std::byte *MemoryManager::address_of(const fs::Offset offset) const {
-  return file_view_begin_ + offset.value();
+  return file_view_.data + offset.value();
 }
 
 bool MemoryManager::is_valid(fs::Offset offset) const {
