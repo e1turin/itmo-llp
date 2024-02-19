@@ -1,5 +1,6 @@
 #pragma once
-#include <store/fs/file.h>
+#include "file_layout.h"
+#include "store/fs/file.h"
 #include <vector>
 
 namespace mem {
@@ -15,12 +16,13 @@ private:
 
 class ArenaAlloc final {
 public:
-  explicit ArenaAlloc(LPVOID, size_t);
-  bool reset(std::byte *);
-  Arena *alloc(size_t);
+  explicit ArenaAlloc(std::byte *, size_t);
+  std::byte *alloc(size_t);
   bool free(Arena *);
+  bool reload(std::byte *);
+
 private:
-  void *file_view_begin_;
+  std::byte *file_view_begin_;
   size_t view_size_;
   std::vector<Arena> free_begin_arenas_;
 };

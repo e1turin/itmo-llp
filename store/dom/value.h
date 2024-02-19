@@ -15,7 +15,7 @@ public:
 public:
   [[nodiscard]]
   Type get_type() const;
-  bool is_primitive() const;
+  [[nodiscard]] bool is_primitive() const;
 
   template <typename T>
   [[nodiscard]]
