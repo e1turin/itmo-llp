@@ -1,6 +1,8 @@
 #pragma once
 
 #include "store/fs/file.h"
+#include "store/memory/file_layout.h"
+
 #include <cstdint>
 #include <memory>
 #include <string>
@@ -119,9 +121,9 @@ public:
   static constexpr Type kType = vtype;
 
   [[nodiscard]]
-  fs::Offset get_ref() const {
-    // NOTE: need to xor inline tag
-    return fs::Offset(*data<size_t>());
+  mem::Offset get_ref() const {
+    // NOTE: need to clear inline tag
+    return mem::Offset(*data<size_t>());
   }
 };
 

@@ -1,8 +1,10 @@
 #pragma once
+
 #include "store/dom/value.h"
 #include "store/fs/file.h"
 
-
+#include <string_view>
+#include <windows.h>
 
 namespace mem {
 
@@ -18,15 +20,28 @@ constexpr size_t kMaxArenaSizeInBytes = 4LL * (1 << 30); // 4GB
 constexpr size_t kNumAvailableSizes =
     calc_num(kMinArenaSizeInBytes, kMaxArenaSizeInBytes);
 
+/**
+ * Platform specific file offset type.
+ */
+class Offset {
+public:
+  explicit Offset(const size_t n) : offset_(n) {}
+
+  [[nodiscard]] size_t value() const { return offset_; }
+
+private:
+  size_t offset_;
+};
+
 struct FileHeader {
   std::uint64_t magic; /* some magic number for any purpose */
   dom::Value root; /* single value-object, ref to block of another values */
-  fs::Offset free_fixed_arena[kNumAvailableSizes]; /* array of refs to*/
-  fs::Offset free_ext_arena;
-  fs::Offset last_arena; /* ref to the furthest allocated arena */
+  mem::Offset free_fixed_arena[mem::kNumAvailableSizes]; /* array of refs to*/
+  mem::Offset free_ext_arena;
+  mem::Offset last_arena; /* ref to the furthest allocated arena */
 };
 
-union FileView {
+union MemView {
   LPVOID view_ptr;
   std::byte *data;
   FileHeader *header;
@@ -39,7 +54,7 @@ struct Arena {
 
 size_t fit_arena_idx(size_t size) {
   size_t idx = 0; // smallest size
-  while(size > kMinArenaSizeInBytes && idx < kNumAvailableSizes) {
+  while(size > mem::kMinArenaSizeInBytes && idx < mem::kNumAvailableSizes) {
     size >>= 1;
     idx++;
   }

@@ -5,20 +5,6 @@
 
 namespace fs {
 
-/**
- * Platform specific file offset type.
- */
-class Offset {
-public:
-  explicit Offset(const size_t n) : offset_(n) {}
-
-  [[nodiscard]] size_t value() const { return offset_; }
-
-private:
-  size_t offset_;
-};
-
-
 class File {
 public:
   [[nodiscard]] HANDLE handle() const { return handle_; }

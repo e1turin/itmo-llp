@@ -1,8 +1,8 @@
 #include "memory_manager.h"
+#include "file_layout.h"
 #include "store/fs/file.h"
 
 #include <iostream>
-#include <format>
 
 namespace mem {
 
@@ -21,7 +21,7 @@ MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
   constexpr DWORD dwMaximumSizeHigh = 0; // To map size equal to
   constexpr DWORD dwMaximumSizeLow  = 0; // the whole file size.
 
-  file_map_obj_ =
+  HANDLE file_map_obj_ =
       CreateFileMapping(file_.handle(), nullptr, PAGE_READWRITE,
                         dwMaximumSizeHigh, dwMaximumSizeLow, nullptr);
 
@@ -29,54 +29,38 @@ MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
     throw std::runtime_error{"Can't map file."};
   }
 
-  constexpr DWORD dwFileOffsetHigh     = 0;
-  constexpr DWORD dwFileOffsetLow      = 0;
-  constexpr DWORD dwNumberOfBytesToMap = 0; // Till the end of file.
-
-  file_view_.view_ptr = static_cast<void *>(
-      MapViewOfFile(file_map_obj_, FILE_MAP_ALL_ACCESS, dwFileOffsetHigh,
-                    dwFileOffsetLow, dwNumberOfBytesToMap));
-
   alloc_ =
-      std::make_unique<mem::ArenaAlloc>(file_view_.header, file_view_.data);
+      std::make_unique<mem::ArenaAlloc>(file_map_obj_, liFileSize.QuadPart);
 }
 
-MemoryManager::~MemoryManager() {
-  if (!UnmapViewOfFile(file_view_.view_ptr)) {
-    std::cerr << "ERROR: Can't unmap file" << std::endl;
+std::optional<dom::Value> MemoryManager::get_root() const {
+  return alloc_->get_root();
+}
+
+bool MemoryManager::write(const Offset dest, const std::byte *begin,
+                          const std::byte *end) {
+  if (begin > end || !is_valid(dest)) {
+    return false;
   }
-
-  CloseHandle(file_map_obj_);
+  void *data  = alloc_->data_ptr() + dest.value();
+  size_t size = end - begin;
+  void *res   = memcpy(data, begin, size);
+  return res != nullptr;
 }
 
-/* MemoryManager::write overloads */
-
-fs::Offset MemoryManager::alloc(const size_t size) const {
-  LARGE_INTEGER liFileSize;
-  if (!GetFileSizeEx(file_.handle(), &liFileSize)) {
-    throw std::runtime_error{"Can't get file size."};
-  }
-
-  liFileSize.QuadPart += size;
-
-  if (!SetFilePointerEx(file_.handle(), liFileSize, nullptr, FILE_BEGIN)) {
-    throw std::runtime_error{std::format("Can't resize file for {} by {}", liFileSize.QuadPart, size)};
-  }
-
-  return fs::Offset{static_cast<size_t>(liFileSize.QuadPart)};
+Offset MemoryManager::alloc(const size_t size) const {
+  return alloc_->alloc(size);
 }
 
-size_t MemoryManager::free(const fs::Offset offset, const size_t size) const {
-  // TODO good freeing
-  memset(address_of(offset), 0, size);
-  return size;
+size_t MemoryManager::free(const Offset offset) const {
+  return alloc_->free(offset);
 }
 
-std::byte *MemoryManager::address_of(const fs::Offset offset) const {
-  return file_view_.data + offset.value();
+std::byte *MemoryManager::address_of(const Offset offset) const {
+  return alloc_->data_ptr() + offset.value();
 }
 
-bool MemoryManager::is_valid(fs::Offset offset) const {
+bool MemoryManager::is_valid(Offset offset) const {
   if (offset.value() == 0) {
     return false;
   } else {

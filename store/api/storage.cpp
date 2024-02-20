@@ -9,7 +9,7 @@ Storage::Storage(std::string_view file_name) {
 }
 
 std::optional<dom::Value> Storage::root() const {
-  return memm_->read<dom::Value>(fs::Offset(0));
+  return memm_->read<dom::Value>(mem::Offset(0));
 }
 
 /* Storage::read overloads */
