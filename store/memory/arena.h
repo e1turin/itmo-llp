@@ -5,14 +5,6 @@
 
 namespace mem {
 
-class Arena {
-public:
-  Arena(const fs::Offset addr, const size_t size) : addr_(addr), size_(size) {}
-
-private:
-  fs::Offset addr_;
-  size_t size_;
-};
 
 class ArenaAlloc final {
 public:
@@ -27,8 +19,10 @@ public:
    * @param lack Amount of bytes that are not enough to allocate required `size`.
    * @return Pointer to memory where can be writen.
    */
-  std::byte *alloc(size_t, size_t &);
+  Arena *alloc(size_t, size_t &);
   bool free(Arena *);
+  bool is_valid(fs::Offset);
+  static bool is_null(fs::Offset);
 
 private:
   MetaInfo meta_info_;

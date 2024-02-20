@@ -15,7 +15,7 @@ public:
   [[nodiscard]] size_t value() const { return offset_; }
 
 private:
-  const size_t offset_;
+  size_t offset_;
 };
 
 
