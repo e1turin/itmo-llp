@@ -120,6 +120,7 @@ public:
 
   [[nodiscard]]
   fs::Offset get_ref() const {
+    // NOTE: need to xor inline tag
     return fs::Offset(*data<size_t>());
   }
 };

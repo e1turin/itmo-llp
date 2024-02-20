@@ -29,6 +29,12 @@ public:
   [[nodiscard]]
   std::optional<std::vector<T>> read_all(fs::Offset offset) const;
 
+  /**
+   * @param dest
+   * @param begin
+   * @param end
+   * @return true if OK
+   */
   bool write(fs::Offset, std::byte *, std::byte *);
   [[nodiscard]] fs::Offset alloc(size_t) const;
   [[nodiscard]] size_t free(fs::Offset, size_t) const;

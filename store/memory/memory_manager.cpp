@@ -37,7 +37,8 @@ MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
       MapViewOfFile(file_map_obj_, FILE_MAP_ALL_ACCESS, dwFileOffsetHigh,
                     dwFileOffsetLow, dwNumberOfBytesToMap));
 
-  alloc_ = std::make_unique<mem::ArenaAlloc>();
+  alloc_ =
+      std::make_unique<mem::ArenaAlloc>(file_view_.header, file_view_.data);
 }
 
 MemoryManager::~MemoryManager() {
