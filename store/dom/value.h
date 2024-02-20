@@ -1,7 +1,7 @@
 #pragma once
 
 #include "store/fs/file.h"
-#include "store/memory/file_layout.h"
+#include "store/memory/offset.h"
 
 #include <cstdint>
 #include <memory>
@@ -53,11 +53,6 @@ protected:
 
   template <typename T>
   [[nodiscard]]
-  const T *data() const {
-    return reinterpret_cast<const T *>(payload_);
-  }
-
-  template <typename T>
   const T *cast_data() const {
     return reinterpret_cast<const T *>(payload_);
   }
@@ -71,7 +66,7 @@ private:
   Tag tag_ = Tag::kNull;
 
   static constexpr size_t kValueSize = 8;
-  std::uint8_t payload_[kValueSize]  = {0};
+  std::byte payload_[kValueSize];
 };
 
 class NullValue final : public Value {
@@ -121,9 +116,9 @@ public:
   static constexpr Type kType = vtype;
 
   [[nodiscard]]
-  mem::Offset get_ref() const {
+  size_t get_ref() const {
     // NOTE: need to clear inline tag
-    return mem::Offset(*data<size_t>());
+    return *cast_data<size_t>();
   }
 };
 
@@ -132,7 +127,7 @@ public:
  */
 class StringValue final : public VectorValue<char, Value::Type::kString> {
 public:
-  explicit StringValue(std::string);
+  explicit StringValue(mem::Offset);
 
   // [[nodiscard]] std::string_view get_string() const {
   //   return std::string_view{begin(), size()};

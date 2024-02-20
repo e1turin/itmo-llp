@@ -2,6 +2,7 @@
 
 #include "store/dom/value.h"
 #include "store/fs/file.h"
+#include "offset.h"
 
 #include <string_view>
 #include <windows.h>
@@ -20,19 +21,6 @@ constexpr size_t kMaxArenaSizeInBytes = 4LL * (1 << 30); // 4GB
 constexpr size_t kNumAvailableSizes =
     calc_num(kMinArenaSizeInBytes, kMaxArenaSizeInBytes);
 
-/**
- * Platform specific file offset type.
- */
-class Offset {
-public:
-  explicit Offset(const size_t n) : offset_(n) {}
-
-  [[nodiscard]] size_t value() const { return offset_; }
-
-private:
-  size_t offset_;
-};
-
 struct FileHeader {
   std::uint64_t magic; /* some magic number for any purpose */
   dom::Value root; /* single value-object, ref to block of another values */
@@ -49,7 +37,10 @@ union MemView {
 
 struct Arena {
   size_t size;
-  std::byte data[];
+  union {
+    Offset next;
+    std::byte bytes[];
+  } data;
 };
 
 size_t fit_arena_idx(size_t size) {

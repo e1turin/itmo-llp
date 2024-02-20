@@ -31,11 +31,11 @@ public:
                                 std::string_view) const;
 
   /* todo set value by index for string and mb obj */
-  template <typename T>
-  bool set(dom::ObjectValue &, std::string_view, T) const;
+  bool set(dom::ObjectValue &, std::string_view, bool) const;
+  bool set(dom::ObjectValue &, std::string_view, std::int32_t) const;
+  bool set(dom::ObjectValue &, std::string_view, float) const;
   size_t set(dom::ObjectValue &, std::string_view, std::string_view) const;
-  template <Derived<dom::ObjectValue>>
-  std::unique_ptr<dom::ObjectValue> set(dom::ObjectValue &, std::string_view,
+  std::optional<dom::ObjectValue> set(dom::ObjectValue &, std::string_view,
                                         size_t) const;
 
   bool truncate(dom::ObjectValue &, size_t) const;
@@ -55,3 +55,4 @@ std::optional<T> Storage::get(const dom::VectorValue<T, vtype> &vec,
   }
   return vals[i];
 }
+

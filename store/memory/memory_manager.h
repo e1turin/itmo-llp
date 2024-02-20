@@ -3,9 +3,10 @@
 #include "file_layout.h"
 #include "store/dom/value.h"
 #include "store/fs/file.h"
-#include "store/memory/arena.h"
 #include "util/util.h"
+#include "offset.h"
 
+#include <functional>
 #include <optional>
 
 namespace mem {
@@ -23,7 +24,17 @@ public:
 
   template <typename T>
   [[nodiscard]]
-  std::optional<std::vector<T>> read_all(Offset offset) const;
+  std::optional<std::vector<T>> read_all(Offset) const;
+
+  template <typename T, typename R>
+  std::optional<R> do_for_entries(Offset offset, std::function<R(size_t, T *)> func) {
+    if (!is_valid(offset)) {
+      return std::nullopt;
+    }
+    auto size = reinterpret_cast<size_t *>(address_of(offset));
+    auto data = reinterpret_cast<T *>(size + 1);
+    return std::optional{func(*size, data)};
+  }
 
   /**
    * @param dest
@@ -31,16 +42,54 @@ public:
    * @param end
    * @return true if OK
    */
-  bool write(Offset, const std::byte *, const std::byte *);
-  [[nodiscard]] Offset alloc(size_t) const;
+  bool write(Offset, const void *, size_t);
+
+  template<typename T>
+  [[nodiscard]] Offset alloc(size_t size) {
+    size_t alloc_size = size * sizeof(T) + sizeof(size);
+    size_t arena_size_idx = fit_arena_idx(alloc_size);
+    Offset offset{0};
+    while (arena_size_idx < mem::kNumAvailableSizes &&
+           is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
+      ++arena_size_idx;
+    }
+    if (arena_size_idx < mem::kNumAvailableSizes) {
+      return use_arena(mem_view_.header->free_fixed_arena[arena_size_idx]);
+    }
+    if (arena_size_idx == mem::kNumAvailableSizes &&
+        !is_null(mem_view_.header->free_ext_arena)) {
+      // TODO: split extended arena into smaller
+      return use_arena(mem_view_.header->free_ext_arena);
+    }
+    constexpr size_t extra_size = sizeof(Arena::size);
+    std::byte *empty = extend_file(alloc_size + extra_size);
+
+    auto empty_arena = reinterpret_cast<Arena *>(empty);
+    empty_arena->size = alloc_size;
+    auto num_elem = reinterpret_cast<size_t *>(empty_arena->data.bytes);
+    *num_elem = size;
+
+    auto new_block = Offset{offset_of(num_elem + 1)};
+
+    mem_view_.header->last_arena = Offset{data_offset_from(empty_arena)};
+    return new_block;
+  }
   [[nodiscard]] size_t free(Offset) const;
 
 private:
+  [[nodiscard]] std::byte *extend_file(size_t);
+  void map_file();
+  [[nodiscard]] Arena *arena_from(Offset) const;
+  [[nodiscard]] Offset data_offset_from(Arena *) const;
+  [[nodiscard]] Offset use_arena(Offset) const;
   [[nodiscard]] std::byte *address_of(Offset) const;
+  [[nodiscard]] Offset offset_of(void *) const;
   [[nodiscard]] bool is_valid(Offset) const;
+  [[nodiscard]] static bool is_null(Offset) ;
 
   fs::File file_;
-  std::unique_ptr<mem::ArenaAlloc> alloc_;
+  HANDLE file_map_obj_;
+  MemView mem_view_;
 };
 
 template <Derived<dom::Value> T>
