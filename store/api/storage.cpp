@@ -8,7 +8,62 @@ Storage::Storage(std::string_view file_name) {
   memm_ = std::make_unique<mem::MemoryManager>(std::move(db_file));
 }
 
-std::optional<dom::Value> Storage::root() const { return memm_->get_root(); }
+std::optional<Node> Storage::root() const {
+  if (auto ref = memm_->root_ref(); ref.has_value()) {
+    return Node{ref.value()};
+  }
+  return std::nullopt;
+}
+
+std::optional<dom::Value::Type> Storage::get_type(Node n) const {
+  mem::Offset off = n.get_ref();
+  std::optional<dom::Value> value = memm_->read<dom::Value>(off);
+  if (!value.has_value()) {
+    return std::nullopt;
+  }
+  return value->get_type();
+}
+
+std::optional<Storage::Data>
+Storage::read(Node n) {
+  auto value = memm_->read<dom::Value>(n.get_ref());
+  if (!value.has_value()) {
+    return std::nullopt;
+  }
+  switch (value.value().get_type()) {
+  case dom::Value::Type::kBoolean:
+    return read(value->as<dom::BoolValue>());
+  case dom::Value::Type::kInt32:
+    return read(value->as<dom::Int32Value>());
+  case dom::Value::Type::kFloat32:
+    return read(value->as<dom::Float32Value>());
+  case dom::Value::Type::kString:
+    return read(value->as<dom::StringValue>());
+  case dom::Value::Type::kObject:
+    return read(value->as<dom::ObjectValue>());
+  case dom::Value::Type::kNull:
+    return std::nullopt;
+  }
+}
+
+std::optional<Node> Storage::get(Node n, std::string_view k) {
+  std::function<dom::Value *(size_t, dom::Entry *)> same_key =
+      [&](size_t size, dom::Entry *ent) -> dom::Value * {
+    for(size_t i = 0; i < size; ++i) {
+      auto &e = ent[i];
+      if (auto str = read(e.key);
+          str.has_value() && str.value() == k) {
+        return &ent[i].value;
+      }
+    }
+    return nullptr;
+  };
+  std::optional<mem::Offset> off = memm_->find_in_entries(n.get_ref(), same_key);
+  if (!off.has_value()) {
+    return std::nullopt;
+  }
+  return Node{off.value()};
+}
 
 /* Storage::read overloads */
 
@@ -115,7 +170,9 @@ bool Storage::set(dom::ObjectValue &obj, std::string_view key, bool val) const {
   }
   data->push_back({.key   = dom::StringValue(str),
                    .value = dom::BoolValue(val).as<dom::Value>()});
+  memm_->free(mem::Offset{obj.get_ref()});
   mem::Offset entries = memm_->alloc<dom::Entry>(data->size());
+  //TODO: update parent object ref...
   return memm_->write(entries, data->data(), data->size());
 }
 

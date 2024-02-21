@@ -16,7 +16,7 @@ public:
   explicit MemoryManager(fs::File &&);
 
   [[nodiscard]]
-  std::optional<dom::Value> get_root() const;
+  std::optional<mem::Offset> root_ref() const;
 
   template <Derived<dom::Value> T>
   [[nodiscard]]
@@ -34,6 +34,21 @@ public:
     auto size = reinterpret_cast<size_t *>(address_of(offset));
     auto data = reinterpret_cast<T *>(size + 1);
     return std::optional{func(*size, data)};
+  }
+
+  template <typename T, typename R>
+  std::optional<Offset> find_in_entries(Offset offset,
+                                        std::function<R *(size_t, T *)> func) {
+    if (!is_valid(offset)) {
+      return std::nullopt;
+    }
+    auto size = reinterpret_cast<size_t *>(address_of(offset));
+    auto data = reinterpret_cast<T *>(size + 1);
+    auto value_ptr = func(*size, data);
+    if (value_ptr == nullptr) {
+      return std::nullopt;
+    }
+    return offset_of(value_ptr);
   }
 
   /**

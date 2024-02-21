@@ -1,23 +1,37 @@
 #pragma once
+#include "store/dom/value.h"
+#include "store/memory/memory_manager.h"
+#include "util/util.h"
+#include "node.h"
+
 #include <optional>
-#include <store/dom/value.h>
-#include <store/memory/memory_manager.h>
-#include <util/util.h>
+#include <variant>
 
 class Storage final {
 public:
+  using Data = std::variant<bool, std::int32_t, float, std::string_view,
+                            std::vector<dom::Entry>>;
   explicit Storage(std::string_view);
 
-  [[nodiscard]] // todo: const Value
-  std::optional<dom::Value> root() const;
+//  [[nodiscard]] // todo: const Value
+//  std::optional<dom::Value> root() const;
+  [[nodiscard]]
+  std::optional<Node> root() const;
+  [[nodiscard]] std::optional<dom::Value::Type> get_type(Node) const;
 
+  [[nodiscard]] std::optional<Data> read(Node);
+  [[nodiscard]] std::optional<Node> get(Node, std::string_view);
+  [[nodiscard]] std::optional<Node> set(Node, std::string_view, Data);
+  bool truncate(Node, std::string_view);
+
+private:
   /* todo: std::variant for result with error code */
   [[nodiscard]]
-  static std::optional<std::int32_t> read(const dom::Int32Value &) ;
+  static std::optional<std::int32_t> read(const dom::Int32Value &);
   [[nodiscard]]
-  static std::optional<float> read(const dom::Float32Value &) ;
+  static std::optional<float> read(const dom::Float32Value &);
   [[nodiscard]]
-  static std::optional<bool> read(const dom::BoolValue &) ;
+  static std::optional<bool> read(const dom::BoolValue &);
   [[nodiscard]]
   std::optional<std::string_view> read(const dom::StringValue &) const;
   [[nodiscard]]

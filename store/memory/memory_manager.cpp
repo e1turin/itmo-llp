@@ -21,8 +21,8 @@ MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
   map_file();
 }
 
-std::optional<dom::Value> MemoryManager::get_root() const {
-  return mem_view_.header->root;
+std::optional<mem::Offset> MemoryManager::root_ref() const {
+  return offset_of(&mem_view_.header->root);
 }
 
 bool MemoryManager::write(const Offset dest, const void *src,
