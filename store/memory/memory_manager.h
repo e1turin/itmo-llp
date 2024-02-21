@@ -1,10 +1,10 @@
 #pragma once
 
 #include "file_layout.h"
+#include "offset.h"
 #include "store/dom/value.h"
 #include "store/fs/file.h"
 #include "util/util.h"
-#include "offset.h"
 
 #include <functional>
 #include <optional>
@@ -21,13 +21,15 @@ public:
   template <Derived<dom::Value> T>
   [[nodiscard]]
   std::optional<T> read(Offset offset) const;
-
   template <typename T>
-  [[nodiscard]]
-  std::optional<std::vector<T>> read_all(Offset) const;
+  [[nodiscard]] std::optional<std::vector<T>> read_all(Offset) const;
+  template <typename T>
+  [[nodiscard]] std::optional<std::vector<std::pair<Offset, Offset>>>
+      ref_for_all_pairs_of(Offset) const;
 
   template <typename T, typename R>
-  std::optional<R> do_for_entries(Offset offset, std::function<R(size_t, T *)> func) {
+  std::optional<R> do_for_entries(Offset offset,
+                                  std::function<R(size_t, T *)> func) {
     if (!is_valid(offset)) {
       return std::nullopt;
     }
@@ -35,21 +37,9 @@ public:
     auto data = reinterpret_cast<T *>(size + 1);
     return std::optional{func(*size, data)};
   }
-
   template <typename T, typename R>
-  std::optional<Offset> find_in_entries(Offset offset,
-                                        std::function<R *(size_t, T *)> func) {
-    if (!is_valid(offset)) {
-      return std::nullopt;
-    }
-    auto size = reinterpret_cast<size_t *>(address_of(offset));
-    auto data = reinterpret_cast<T *>(size + 1);
-    auto value_ptr = func(*size, data);
-    if (value_ptr == nullptr) {
-      return std::nullopt;
-    }
-    return offset_of(value_ptr);
-  }
+  std::optional<Offset> find_in_entries(Offset,
+                                        std::function<R *(size_t, T *)>);
 
   /**
    * @param dest
@@ -58,51 +48,27 @@ public:
    * @return true if OK
    */
   bool write(Offset, const void *, size_t);
+  template <Derived<dom::Value> T>
+  bool write(Offset offset, T &&value);
 
-  template<typename T>
-  [[nodiscard]] Offset alloc(size_t size) {
-    size_t alloc_size = size * sizeof(T) + sizeof(size);
-    size_t arena_size_idx = fit_arena_idx(alloc_size);
-    Offset offset{0};
-    while (arena_size_idx < mem::kNumAvailableSizes &&
-           is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
-      ++arena_size_idx;
-    }
-    if (arena_size_idx < mem::kNumAvailableSizes) {
-      return use_arena(mem_view_.header->free_fixed_arena[arena_size_idx]);
-    }
-    if (arena_size_idx == mem::kNumAvailableSizes &&
-        !is_null(mem_view_.header->free_ext_arena)) {
-      // TODO: split extended arena into smaller
-      return use_arena(mem_view_.header->free_ext_arena);
-    }
-    constexpr size_t extra_size = sizeof(Arena::size);
-    std::byte *empty = extend_file(alloc_size + extra_size);
-
-    auto empty_arena = reinterpret_cast<Arena *>(empty);
-    empty_arena->size = alloc_size;
-    auto num_elem = reinterpret_cast<size_t *>(empty_arena->data.bytes);
-    *num_elem = size;
-
-    auto new_block = Offset{offset_of(num_elem + 1)};
-
-    mem_view_.header->last_arena = Offset{data_offset_from(empty_arena)};
-    return new_block;
-  }
+  template <typename T>
+  [[nodiscard]]
+  Offset alloc(size_t size);
   [[nodiscard]] size_t free(Offset) const;
 
 private:
-  [[nodiscard]] std::byte *extend_file(size_t);
+  [[nodiscard]] std::byte *expand_file_by(size_t);
   void map_file();
-  [[nodiscard]] Arena *arena_from(Offset) const;
-  [[nodiscard]] Offset data_offset_from(Arena *) const;
+  [[nodiscard]] Arena *arena_for(Offset) const;
+  [[nodiscard]] Offset data_offset_in(Arena *) const;
   [[nodiscard]] Offset use_arena(Offset) const;
   [[nodiscard]] std::byte *address_of(Offset) const;
   [[nodiscard]] Offset offset_of(void *) const;
   [[nodiscard]] bool is_valid(Offset) const;
-  [[nodiscard]] static bool is_null(Offset) ;
+  [[nodiscard]] static bool is_null(Offset);
 
   fs::File file_;
+  size_t file_size_;
   HANDLE file_map_obj_;
   MemView mem_view_;
 };
@@ -125,6 +91,81 @@ std::optional<std::vector<T>> MemoryManager::read_all(Offset offset) const {
   T *begin  = reinterpret_cast<T *>(size + 1);
   T *end    = begin + *size;
   return std::vector<T>{begin, end};
+}
+
+template <typename T>
+std::optional<std::vector<std::pair<Offset, Offset>>>
+MemoryManager::ref_for_all_pairs_of(Offset offset) const {
+  if (!is_valid(offset)) {
+    return std::nullopt;
+  }
+  auto size = reinterpret_cast<size_t *>(address_of(offset));
+  auto data  = reinterpret_cast<std::pair<T, T> *>(size + 1);
+  std::vector<std::pair<Offset, Offset>> pairs;
+  pairs.reserve(*size);
+  for(size_t i = 0; i < *size; ++i) {
+    //TODO
+  }
+}
+
+
+template <typename T, typename R>
+std::optional<Offset>
+MemoryManager::find_in_entries(Offset offset,
+                               std::function<R *(size_t, T *)> func) {
+  if (!is_valid(offset)) {
+    return std::nullopt;
+  }
+  auto size      = reinterpret_cast<size_t *>(address_of(offset));
+  auto data      = reinterpret_cast<T *>(size + 1);
+  auto value_ptr = func(*size, data);
+  if (value_ptr == nullptr) {
+    return std::nullopt;
+  }
+  return offset_of(value_ptr);
+}
+
+template <Derived<dom::Value> T>
+bool MemoryManager::write(Offset offset, T &&value) {
+  if (!is_valid(offset)) {
+    return false;
+  }
+  T *data = reinterpret_cast<T *>(address_of(offset));
+  *data   = value;
+  return true;
+}
+
+template <typename T>
+Offset MemoryManager::alloc(size_t size) {
+  size_t alloc_size     = size * sizeof(T) + sizeof(size);
+  size_t arena_size_idx = fit_arena_idx(alloc_size);
+  Offset offset{0};
+  while (arena_size_idx < mem::kNumAvailableSizes &&
+         is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
+    ++arena_size_idx;
+  }
+  if (arena_size_idx < mem::kNumAvailableSizes) {
+    return use_arena(mem_view_.header->free_fixed_arena[arena_size_idx]);
+  }
+  if (arena_size_idx == mem::kNumAvailableSizes &&
+      !is_null(mem_view_.header->free_ext_arena)) {
+    // TODO: split extended arena into smaller
+    return use_arena(mem_view_.header->free_ext_arena);
+  }
+  constexpr size_t extra_size = sizeof(Arena::size);
+  std::byte *empty            = expand_file_by(alloc_size + extra_size);
+
+  auto empty_arena  = reinterpret_cast<Arena *>(empty);
+  empty_arena->size = alloc_size;
+
+  mem_view_.header->last_arena = Offset{data_offset_in(empty_arena)};
+
+  auto num_elems = reinterpret_cast<size_t *>(empty_arena->data.bytes);
+  *num_elems     = size;
+
+  auto new_block = Offset{offset_of(num_elems + 1)};
+
+  return new_block;
 }
 
 } // namespace mem

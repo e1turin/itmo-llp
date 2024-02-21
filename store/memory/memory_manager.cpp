@@ -19,6 +19,7 @@ MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
     }
   }
   map_file();
+  file_size_ = liFileSize.QuadPart;
 }
 
 std::optional<mem::Offset> MemoryManager::root_ref() const {
@@ -35,9 +36,8 @@ bool MemoryManager::write(const Offset dest, const void *src,
   return res != nullptr;
 }
 
-
 size_t MemoryManager::free(const Offset offset) const {
-  Arena *arena = arena_from(offset);
+  Arena *arena = arena_for(offset);
   size_t arena_size_idx = fit_arena_idx(arena->size);
   if (arena_size_idx < mem::kNumAvailableSizes) {
     // TODO: arenas can be sorted by offset
@@ -52,17 +52,30 @@ size_t MemoryManager::free(const Offset offset) const {
 std::byte *MemoryManager::address_of(const Offset offset) const {
   return mem_view_.data + offset.value();
 }
-
-bool MemoryManager::is_valid(Offset offset) const {
-  if (offset.value() == 0) {
-    return false;
-  } else {
-    return true;
-  }
+Arena *MemoryManager::arena_for(Offset offset) const {
+  std::ptrdiff_t diff = offsetof(Arena, data);
+  auto arena =
+      reinterpret_cast<Arena *>(mem_view_.data + offset.value() - diff);
+  return arena;
 }
-bool MemoryManager::is_null(Offset offset) { return offset.value() == 0; }
+Offset MemoryManager::data_offset_in(Arena *arena) const {
+  std::byte *arena_data = arena->data.bytes;
+  size_t offset         = arena_data - mem_view_.data;
+  return Offset{offset};
+}
+Offset MemoryManager::offset_of(void *p) const {
+  auto *data    = static_cast<std::byte *>(p);
+  size_t offset = data - mem_view_.data;
+  return Offset{offset};
+}
 
-std::byte *MemoryManager::extend_file(size_t size) {
+bool MemoryManager::is_null(Offset offset) { return offset.value() == 0; }
+bool MemoryManager::is_valid(Offset offset) const {
+  return offset.value() >= sizeof(FileHeader) && offset.value() < file_size_ &&
+         !is_null(offset);
+}
+
+std::byte *MemoryManager::expand_file_by(size_t size) {
   LARGE_INTEGER liFileSize;
   if (!GetFileSizeEx(file_.handle(), &liFileSize)) {
     throw std::runtime_error{"Can't get file size."};
@@ -74,9 +87,8 @@ std::byte *MemoryManager::extend_file(size_t size) {
     throw std::runtime_error{std::format("Can't resize file for {} by {}",
                                          liFileSize.QuadPart, size)};
   }
-
   map_file();
-
+  file_size_ = liNewFileSize.QuadPart;
   return mem_view_.data + liFileSize.QuadPart;
 }
 
@@ -104,15 +116,8 @@ void MemoryManager::map_file() {
   }
 }
 
-Arena *MemoryManager::arena_from(Offset offset) const {
-  std::ptrdiff_t diff = offsetof(Arena, data);
-  auto arena =
-      reinterpret_cast<Arena *>(mem_view_.data + offset.value() - diff);
-  return arena;
-}
-
 Offset MemoryManager::use_arena(Offset offset) const {
-  Arena *arena     = arena_from(offset);
+  Arena *arena     = arena_for(offset);
   size_t arena_idx = fit_arena_idx(arena->size);
   if (arena_idx < mem::kNumAvailableSizes) {
     mem_view_.header->free_fixed_arena[arena_idx] =
@@ -122,17 +127,6 @@ Offset MemoryManager::use_arena(Offset offset) const {
         is_valid(arena->data.next) ? arena->data.next : Offset{0};
   }
   return offset;
-}
-
-Offset MemoryManager::data_offset_from(Arena *arena) const {
-  std::byte *arena_data = arena->data.bytes;
-  size_t offset         = arena_data - mem_view_.data;
-  return Offset{offset};
-}
-Offset MemoryManager::offset_of(void *p) const {
-  auto *data    = static_cast<std::byte *>(p);
-  size_t offset = data - mem_view_.data;
-  return Offset{offset};
 }
 
 } // namespace mem
