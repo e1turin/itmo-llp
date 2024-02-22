@@ -1,5 +1,6 @@
 #include "storage.h"
 
+#include <algorithm>
 #include <format>
 #include <iostream>
 
@@ -43,11 +44,23 @@ std::optional<Storage::Data> Storage::read(Node n) {
 
 std::optional<Storage::ObjEntries> Storage::get_entries(Node n) {
   auto value = memm_->read<dom::Value>(n.get_ref());
-  if (!value.has_value() || (*value).get_type() != dom::Value::Type::kObject) {
+  if (!value || value->get_type() != dom::Value::Type::kObject) {
     return std::nullopt;
   }
-  //TODO
-  //  memm_->ref_for_all_pairs_of<dom::Value>()
+  auto data = mem::Offset{value->as<dom::ObjectValue>().get_ref()};
+  std::optional<std::vector<std::pair<mem::Offset, mem::Offset>>> data_refs =
+      memm_->ref_all_pairs<dom::Value>(data);
+  if(!data_refs) {
+    return std::nullopt;
+  }
+  std::vector<std::pair<Node, Node>> nodes;
+  std::transform(data_refs->begin(), data_refs->end(),
+                 std::back_inserter(nodes),
+                 [](const std::pair<mem::Offset, mem::Offset> &p)
+                     -> std::pair<Node, Node> {
+                   return std::make_pair(Node{p.first}, Node{p.second});
+                 });
+  return nodes;
 }
 
 std::optional<Node> Storage::get(Node n, std::string_view k) {
@@ -162,75 +175,3 @@ Storage::read(const dom::ObjectValue &v) const {
       memm_->read_all<dom::Entry>(mem::Offset{v.get_ref()});
   return std::move(chars);
 }
-
-
-/*   *//* DEPRECATED *//*
-std::optional<dom::Value> Storage::get(const dom::ObjectValue &obj,
-                                       const std::string_view key) const {
-  if (!obj.is<dom::ObjectValue>()) {
-    return std::nullopt;
-  }
-  *//* todo optimize with additional dangerous method accessed mapped memory *//*
-
-  std::optional<std::vector<dom::Entry>> entries =
-      memm_->read_all<dom::Entry>(mem::Offset{obj.get_ref()});
-  if (!entries.has_value()) {
-    return std::nullopt;
-  }
-  auto entry =
-      std::find_if(entries->begin(), entries->end(), [&](dom::Entry &it) {
-        std::optional<std::string_view> str = read(it.key);
-        return str.has_value() && str == key;
-      });
-  if (entry == entries->end()) {
-    return std::nullopt;
-  }
-  return entry->value;
-}
-
-bool Storage::set(dom::ObjectValue &obj, std::string_view key, bool val) const {
-  std::function<int(size_t, dom::Entry *)> func =
-      [&](size_t size, dom::Entry *data) -> int {
-    for (size_t i = 0; i < size; ++i) {
-      std::optional<std::string_view> k = read(data[i].key);
-      if (!k.has_value()) {
-        return -1;
-      }
-      if (k == key) {
-        //TODO: chck node type
-        data[i].value = dom::BoolValue(val).as<dom::Value>();
-        return 1;
-      }
-    }
-    return 0;
-  };
-  std::optional<int> res =
-      memm_->do_for_entries(mem::Offset{obj.get_ref()}, func);
-
-  if (!res.has_value()) {
-    return false;
-  }
-  if (res.value() == 1) {
-    return true;
-  }
-  std::optional<std::vector<dom::Entry>> data = read(obj);
-  if(!data.has_value()) {
-    return false;
-  }
-  mem::Offset str = memm_->alloc<char>(key.size());
-  bool key_res = memm_->write(str, key.data(), key.size());
-  if (!key_res) {
-    return false;
-  }
-  data->push_back({.key   = dom::StringValue(str),
-                   .value = dom::BoolValue(val).as<dom::Value>()});
-  memm_->free(mem::Offset{obj.get_ref()});
-  mem::Offset entries = memm_->alloc<dom::Entry>(data->size());
-  //TODO: update parent object ref...
-  return memm_->write(entries, data->data(), data->size());
-}
-*/
-
-/* Storage::set overloads */
-
-/* Storage::truncate overloads */

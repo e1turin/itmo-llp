@@ -25,7 +25,7 @@ public:
   [[nodiscard]] std::optional<std::vector<T>> read_all(Offset) const;
   template <typename T>
   [[nodiscard]] std::optional<std::vector<std::pair<Offset, Offset>>>
-      ref_for_all_pairs_of(Offset) const;
+      ref_all_pairs(Offset) const;
 
   template <typename T, typename R>
   std::optional<R> do_for_entries(Offset offset,
@@ -95,7 +95,7 @@ std::optional<std::vector<T>> MemoryManager::read_all(Offset offset) const {
 
 template <typename T>
 std::optional<std::vector<std::pair<Offset, Offset>>>
-MemoryManager::ref_for_all_pairs_of(Offset offset) const {
+MemoryManager::ref_all_pairs(Offset offset) const {
   if (!is_valid(offset)) {
     return std::nullopt;
   }
@@ -104,8 +104,9 @@ MemoryManager::ref_for_all_pairs_of(Offset offset) const {
   std::vector<std::pair<Offset, Offset>> pairs;
   pairs.reserve(*size);
   for(size_t i = 0; i < *size; ++i) {
-    //TODO
+    pairs.emplace_back(offset_of(&data[i].first), offset_of(&data[i].second));
   }
+  return pairs;
 }
 
 
@@ -139,7 +140,6 @@ template <typename T>
 Offset MemoryManager::alloc(size_t size) {
   size_t alloc_size     = size * sizeof(T) + sizeof(size);
   size_t arena_size_idx = fit_arena_idx(alloc_size);
-  Offset offset{0};
   while (arena_size_idx < mem::kNumAvailableSizes &&
          is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
     ++arena_size_idx;
@@ -153,19 +153,18 @@ Offset MemoryManager::alloc(size_t size) {
     return use_arena(mem_view_.header->free_ext_arena);
   }
   constexpr size_t extra_size = sizeof(Arena::size);
-  std::byte *empty            = expand_file_by(alloc_size + extra_size);
 
+  std::byte *empty  = expand_file_by(alloc_size + extra_size);
   auto empty_arena  = reinterpret_cast<Arena *>(empty);
   empty_arena->size = alloc_size;
 
   mem_view_.header->last_arena = Offset{data_offset_in(empty_arena)};
 
-  auto num_elems = reinterpret_cast<size_t *>(empty_arena->data.bytes);
-  *num_elems     = size;
+  auto count = reinterpret_cast<size_t *>(empty_arena->data.bytes);
+  *count     = size;
 
-  auto new_block = Offset{offset_of(num_elems + 1)};
-
-  return new_block;
+  auto free_block = Offset{offset_of(count + 1)};
+  return free_block;
 }
 
 } // namespace mem
