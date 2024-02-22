@@ -116,9 +116,9 @@ public:
   static constexpr Type kType = vtype;
 
   [[nodiscard]]
-  size_t get_ref() const {
+  mem::Offset get_ref() const {
     // NOTE: need to clear inline tag
-    return *cast_data<size_t>();
+    return mem::Offset{*cast_data<size_t>()};
   }
 };
 
@@ -141,7 +141,7 @@ struct Entry {
 
 class ObjectValue final : public VectorValue<Entry, Value::Type::kObject> {
 public:
-  explicit ObjectValue(std::vector<Entry>);
+  explicit ObjectValue(mem::Offset);
   static ObjectValue null_object() { return ObjectValue(); }
 
 private:
