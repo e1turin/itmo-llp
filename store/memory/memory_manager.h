@@ -75,11 +75,10 @@ private:
 
 template <Derived<dom::Value> T>
 std::optional<T> MemoryManager::read(Offset offset) const {
-  if (is_valid(offset)) {
-    return *reinterpret_cast<T *>(address_of(offset));
-  } else {
+  if (!is_valid(offset)) {
     return std::nullopt;
   }
+  return *reinterpret_cast<T *>(address_of(offset));
 }
 
 template <typename T>

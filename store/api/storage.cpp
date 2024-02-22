@@ -11,27 +11,22 @@ Storage::Storage(std::string_view file_name) {
 }
 
 std::optional<Node> Storage::root() const {
-  if (auto ref = memm_->root_ref(); ref.has_value()) {
-    return Node{ref.value()};
-  }
-  return std::nullopt;
+  std::optional<mem::Offset> ref = memm_->root_ref();
+  return ref ? std::make_optional<Node>(*ref) : std::nullopt;
 }
 
 std::optional<dom::Value::Type> Storage::get_type(Node node) const {
   mem::Offset off = node.get_ref();
   std::optional<dom::Value> value = memm_->read<dom::Value>(off);
-  if (!value.has_value()) {
-    return std::nullopt;
-  }
-  return value->get_type();
+  return value ? std::make_optional(value->get_type()) : std::nullopt;
 }
 
 std::optional<Storage::Data> Storage::read(Node n) {
-  auto value = memm_->read<dom::Value>(n.get_ref());
-  if (!value.has_value()) {
+  std::optional<dom::Value> value = memm_->read<dom::Value>(n.get_ref());
+  if (!value) {
     return std::nullopt;
   }
-  switch ((*value).get_type()) {
+  switch (value->get_type()) {
   case dom::Value::Type::kBoolean: return read(value->as<dom::BoolValue>());
   case dom::Value::Type::kInt32:   return read(value->as<dom::Int32Value>());
   case dom::Value::Type::kFloat32: return read(value->as<dom::Float32Value>());
@@ -43,7 +38,7 @@ std::optional<Storage::Data> Storage::read(Node n) {
 }
 
 std::optional<Storage::ObjEntries> Storage::get_entries(Node n) {
-  auto value = memm_->read<dom::Value>(n.get_ref());
+  std::optional<dom::Value> value = memm_->read<dom::Value>(n.get_ref());
   if (!value || value->get_type() != dom::Value::Type::kObject) {
     return std::nullopt;
   }
@@ -64,40 +59,32 @@ std::optional<Storage::ObjEntries> Storage::get_entries(Node n) {
 }
 
 std::optional<Node> Storage::get(Node n, std::string_view k) {
-  if (get_type(n) != dom::Value::Type::kObject) {
+  if (auto t = get_type(n); !t || t != dom::Value::Type::kObject) {
     return std::nullopt;
   }
   std::function<dom::Value *(size_t, dom::Entry *)> same_key =
       [&](size_t size, dom::Entry *ent) -> dom::Value * {
     for(size_t i = 0; i < size; ++i) {
       auto &e = ent[i];
-      if (auto str = read(e.key);
-          str.has_value() && str.value() == k) {
+      if (auto str = read(e.key); str && *str == k) {
         return &ent[i].value;
       }
     }
     return nullptr;
   };
   std::optional<mem::Offset> off = memm_->find_in_entries(n.get_ref(), same_key);
-  if (!off.has_value()) {
-    return std::nullopt;
-  }
-  return Node{off.value()};
+  return off ? std::make_optional<Node>(*off) : std::nullopt;
 }
 
 std::optional<Node>
 Storage::set(Node n, std::string_view k, const Data& d) {
-  if (auto t = get_type(n);
-      !t.has_value() || *t != dom::Value::Type::kObject) {
-    return std::nullopt;
-  }
   std::optional<Node> value = get(n, k);
-  if (!value.has_value()) {
+  if (!value) {
     return std::nullopt;
   }
 
   if (!truncate(*value)) {
-    std::cerr << "Can't truncate vale on " << (*value).get_ref().value()
+    std::cerr << "Can't truncate value on offset=" << value->get_ref().value()
               << std::endl;
     return std::nullopt;
   }
@@ -128,7 +115,7 @@ Storage::set(Node n, std::string_view k, const Data& d) {
     std::cerr << "Undefined value variant" << std::endl;
     return std::nullopt;
   }
-  return value.value();
+  return *value;
 }
 
 /* Storage::read overloads */
@@ -160,7 +147,7 @@ std::optional<std::string_view> Storage::read(const dom::StringValue &v) const {
   }
   std::optional<std::vector<char>> chars =
       memm_->read_all<char>(mem::Offset{v.get_ref()});
-  if (!chars.has_value()) {
+  if (!chars) {
     return std::nullopt;
   }
   return std::string_view{chars->data(), chars->size()};
@@ -173,5 +160,5 @@ Storage::read(const dom::ObjectValue &v) const {
   }
   std::optional<std::vector<dom::Entry>> chars =
       memm_->read_all<dom::Entry>(mem::Offset{v.get_ref()});
-  return std::move(chars);
+  return *chars;
 }
