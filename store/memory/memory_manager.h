@@ -6,7 +6,9 @@
 #include "store/fs/file.h"
 #include "util/util.h"
 
+#include <algorithm>
 #include <functional>
+#include <iterator>
 #include <optional>
 
 namespace mem {
@@ -18,7 +20,7 @@ public:
   [[nodiscard]]
   std::optional<mem::Offset> root_ref() const;
 
-  template <Derived<dom::Value> T>
+  template <typename T>
   [[nodiscard]]
   std::optional<T> read(Offset offset) const;
   template <typename T>
@@ -40,6 +42,9 @@ public:
   template <typename T, typename R>
   std::optional<Offset> find_in_entries(Offset,
                                         std::function<R *(size_t, T *)>);
+  template <typename T, typename R>
+  std::optional<std::vector<Offset>>
+      find_in_entries(Offset, std::function<std::vector<R *>(size_t, T *)>);
 
   /**
    * @param dest
@@ -48,7 +53,7 @@ public:
    * @return true if OK
    */
   bool write(Offset, const void *, size_t);
-  template <Derived<dom::Value> T>
+  template <typename T>
   bool write(Offset offset, T &&value);
 
   template <typename T>
@@ -73,7 +78,7 @@ private:
   MemView mem_view_;
 };
 
-template <Derived<dom::Value> T>
+template <typename T>
 std::optional<T> MemoryManager::read(Offset offset) const {
   if (!is_valid(offset)) {
     return std::nullopt;
@@ -122,10 +127,33 @@ MemoryManager::find_in_entries(Offset offset,
   if (value_ptr == nullptr) {
     return std::nullopt;
   }
-  return offset_of(value_ptr);
+  Offset target = offset_of(value_ptr);
+  return is_valid(target) ? target : Offset{0};
 }
 
-template <Derived<dom::Value> T>
+template <typename T, typename R>
+std::optional<std::vector<Offset>> MemoryManager::find_in_entries(
+    Offset offset, std::function<std::vector<R *>(size_t, T *)> func) {
+  if (!is_valid(offset)) {
+    return std::nullopt;
+  }
+  auto size = reinterpret_cast<size_t *>(address_of(offset));
+  auto data = reinterpret_cast<T *>(size + 1);
+
+  std::vector<R *> ptrs = func(*size, data);
+  for (auto ptr : ptrs) {
+    if (!is_valid(Offset{offset_of(ptr)})) {
+      return std::nullopt;
+    }
+  }
+  std::vector<Offset> refs;
+  std::transform(
+      ptrs.begin(), ptrs.end(), std::back_inserter(refs),
+      [&](R *ptr) -> Offset { return Offset{offset_of(ptr)}; });
+  return refs;
+}
+
+template <typename T>
 bool MemoryManager::write(Offset offset, T &&value) {
   if (!is_valid(offset)) {
     return false;
