@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <format>
 #include <iostream>
+#include <iterator>
 
 Storage::Storage(std::string_view file_name) {
   auto db_file = fs::File(file_name);
@@ -42,7 +43,7 @@ std::optional<Storage::ObjEntries> Storage::get_entries(Node n) {
   if (!value || value->get_type() != dom::Value::Type::kObject) {
     return std::nullopt;
   }
-  auto data = mem::Offset{value->as<dom::ObjectValue>().get_ref()};
+  auto data = value->as<dom::ObjectValue>().get_ref();
   std::optional<std::vector<std::pair<mem::Offset, mem::Offset>>> data_refs =
       memm_->ref_all_pairs<dom::Value>(data);
   if(!data_refs) {
@@ -78,6 +79,7 @@ std::optional<Node> Storage::get(Node n, std::string_view k) {
 
 std::optional<Node>
 Storage::set(Node n, std::string_view k, const Data& d) {
+  /* TODO: INSERT KEY & VALUE IN OBJECT */
   std::optional<Node> value = get(n, k);
   if (!value) {
     return std::nullopt;
@@ -118,6 +120,102 @@ Storage::set(Node n, std::string_view k, const Data& d) {
   return *value;
 }
 
+bool Storage::truncate(Node node) {
+  /* TODO: CHANGE RECURSION TO A LINEAR TREE TRAVERSAL */
+  std::optional<dom::Value> val = memm_->read<dom::Value>(node.get_ref());
+  if (!val) {
+    return false;
+  }
+  auto type = val->get_type();
+  if (type == dom::Value::Type::kString) {
+    mem::Offset chars = val->as<dom::StringValue>().get_ref();
+    if (!memm_->free(chars)) {
+      return false;
+    }
+  } else if (type == dom::Value::Type::kObject) {
+    mem::Offset data = val->as<dom::ObjectValue>().get_ref();
+    if (data.value() == 0) {
+      return true; // already null-object == empty
+    }
+    // TODO: change on MemoryManager::do_for_entries(..., [](){...truncate})
+    std::optional<ObjEntries> children = get_entries(node);
+    if (!children) {
+      return false;
+    }
+    for (auto &p : *children) {
+      if (!truncate(p.first) || !truncate(p.second)) {
+        return false;
+      }
+    }
+    if (!memm_->free(data)) {
+      return false;
+    }
+  }
+  return memm_->write(node.get_ref(), dom::ObjectValue::null_object());
+}
+
+bool Storage::truncate(Node node, std::string_view key) {
+  std::optional<dom::Value> val = memm_->read<dom::Value>(node.get_ref());
+  if (val->get_type() != dom::Value::Type::kObject) {
+    return false;
+  }
+  mem::Offset data_ref = val->as<dom::ObjectValue>().get_ref();
+  if (data_ref.value() == 0) { // null-object is already truncated
+    return true;
+  }
+  std::function<std::vector<dom::Value *>(size_t, dom::Entry *)> key_and_value =
+      [&](size_t size, dom::Entry *ent) -> std::vector<dom::Value *> {
+        std::vector<dom::Value *> values;
+        for(size_t i = 0; i < size; ++i) {
+          auto &e = ent[i];
+          if (auto str = read(e.key); str && *str == key) {
+            values.push_back(&e.key);
+            values.push_back(&e.value);
+            auto &end = ent[size-1];
+            values.push_back(&end.key);
+            values.push_back(&end.value);
+            return values;
+          }
+        };
+        return values;
+      };
+  std::optional<std::vector<mem::Offset>> entry =
+      memm_->find_in_entries(data_ref, key_and_value);
+  if (!entry) {
+    return false;
+  }
+  if (entry->empty()) { // No such key -> truncation complete.
+    return true;
+  }
+  if (entry->size() != 4) { // Found required key-value and last
+    return false;           // key-value for substitution.
+  }
+  Node key_node = Node{(*entry)[0]};
+  Node value_node = Node{(*entry)[1]};
+  Node last_key_node = Node{(*entry)[2]};
+  Node last_value_node = Node{(*entry)[3]};
+  if(!truncate(key_node) || !truncate(value_node)) {
+    return false;
+  }
+  std::optional<size_t> count_entries = memm_->read<size_t>(data_ref);
+  if (!count_entries) {
+    return false;
+  }
+  if(!memm_->write(data_ref, *count_entries - 1)) {
+    return false;
+  }
+  std::optional<dom::Value> last_key = memm_->read<dom::Value>(last_key_node.get_ref());
+  if (!last_key) {
+    return false;
+  }
+  std::optional<dom::Value> last_value = memm_->read<dom::Value>(last_value_node.get_ref());
+  if (!last_value) {
+    return false;
+  }
+  return memm_->write(last_key_node.get_ref(), std::move(*last_key)) &&
+         memm_->write(last_value_node.get_ref(), std::move(*last_value));
+}
+
 /* Storage::read overloads */
 
 std::optional<std::int32_t> Storage::read(const dom::Int32Value &v) {
@@ -146,7 +244,7 @@ std::optional<std::string_view> Storage::read(const dom::StringValue &v) const {
     return std::nullopt;
   }
   std::optional<std::vector<char>> chars =
-      memm_->read_all<char>(mem::Offset{v.get_ref()});
+      memm_->read_all<char>(v.get_ref());
   if (!chars) {
     return std::nullopt;
   }
@@ -159,6 +257,6 @@ Storage::read(const dom::ObjectValue &v) const {
     return std::nullopt;
   }
   std::optional<std::vector<dom::Entry>> chars =
-      memm_->read_all<dom::Entry>(mem::Offset{v.get_ref()});
+      memm_->read_all<dom::Entry>(v.get_ref());
   return *chars;
 }
