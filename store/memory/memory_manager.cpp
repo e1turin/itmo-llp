@@ -37,6 +37,9 @@ bool MemoryManager::write(const Offset dest, const void *src,
 }
 
 size_t MemoryManager::free(const Offset offset) const {
+  if (!is_valid(offset)) {
+    return 0;
+  }
   Arena *arena = arena_for(offset);
   size_t arena_size_idx = fit_arena_idx(arena->size);
   if (arena_size_idx < mem::kNumAvailableSizes) {
@@ -47,6 +50,7 @@ size_t MemoryManager::free(const Offset offset) const {
     arena->data.next = mem_view_.header->free_ext_arena;
     mem_view_.header->free_ext_arena = offset;
   }
+  return arena->size;
 }
 
 std::byte *MemoryManager::address_of(const Offset offset) const {
