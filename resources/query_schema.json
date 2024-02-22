@@ -1,0 +1,354 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "./query_schema.json",
+    "title": "Query",
+    "description": "Query json represantation",
+    "definitions": {
+        "element": {
+            "type": "object",
+            "properties": {
+                "elementType": {
+                    "type": "string"
+                },
+                "attributes": {
+                    "type": "array",
+                    "items": {
+                        "oneOf": [
+                            {
+                                "type": "string"
+                            },
+                            {
+                                "type": "number"
+                            },
+                            {
+                                "type": "boolean"
+                            }
+                        ]
+                    }
+                }
+            },
+            "required": [
+                "elementType",
+                "attributes"
+            ],
+            "additionalProperties": false
+        },
+        "attributesPattern": {
+            "oneOf": [
+                {
+                    "description": "binary operation",
+                    "type": "object",
+                    "properties": {
+                        "patternType": {
+                            "const": "BIN_OP"
+                        },
+                        "operation": {
+                            "enum": [
+                                "AND",
+                                "OR"
+                            ]
+                        },
+                        "lhs": {
+                            "$ref": "#/definitions/attributesPattern"
+                        },
+                        "rhs": {
+                            "$ref": "#/definitions/attributesPattern"
+                        }
+                    },
+                    "required": [
+                        "patternType",
+                        "operation",
+                        "lhs",
+                        "rhs"
+                    ],
+                    "additionalItems": false
+                },
+                {
+                    "description": "condition node",
+                    "type": "object",
+                    "properties": {
+                        "patternType": {
+                            "const": "COND"
+                        },
+                        "operation": {
+                            "enum": [
+                                "EQ",
+                                "NEQ",
+                                "GT",
+                                "LT",
+                                "GTE",
+                                "LTE"
+                            ]
+                        },
+                        "index": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "oneOf": [
+                                {
+                                    "type": "number"
+                                },
+                                {
+                                    "type": "string"
+                                }
+                            ]
+                        }
+                    },
+                    "required": [
+                        "patternType",
+                        "operation",
+                        "index",
+                        "value"
+                    ],
+                    "additionalItems": false
+                },
+                {
+                    "description": "condition node",
+                    "type": "object",
+                    "properties": {
+                        "patternType": {
+                            "const": "COND"
+                        },
+                        "operation": {
+                            "const": "CONTAINS"
+                        },
+                        "index": {
+                            "type": "integer"
+                        },
+                        "value": {
+                            "type": "string"
+                        }
+                    },
+                    "required": [
+                        "patternType",
+                        "operation",
+                        "index",
+                        "value"
+                    ],
+                    "additionalItems": false
+                }
+            ]
+        },
+        "linkPattern": {
+            "type": "object",
+            "properties": {
+                "linkType": {
+                    "type": "string"
+                },
+                "target": {
+                    "$ref": "#/definitions/elementPattern"
+                }
+            },
+            "required": [
+                "linkType"
+            ],
+            "additionalProperties": false
+        },
+        "elementPattern": {
+            "type": "object",
+            "properties": {
+                "elementType": {
+                    "type": "string"
+                },
+                "attributes": {
+                    "$ref": "#/definitions/attributesPattern"
+                },
+                "linksIn": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/linkPattern"
+                    }
+                },
+                "linksOut": {
+                    "type": "array",
+                    "items": {
+                        "$ref": "#/definitions/linkPattern"
+                    }
+                }
+            },
+            "required": [
+                "elementType",
+                "linksIn",
+                "linksOut"
+            ],
+            "additionalProperties": false
+        }
+    },
+    "type": "object",
+    "oneOf": [
+        {
+            "properties": {
+                "queryType": {
+                    "const": "create_vertex"
+                },
+                "element": {
+                    "$ref": "#/definitions/element"
+                }
+            },
+            "required": [
+                "queryType",
+                "element"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "queryType": {
+                    "enum": [
+                        "drop_vertex",
+                        "match"
+                    ]
+                },
+                "pattern": {
+                    "$ref": "#/definitions/elementPattern"
+                }
+            },
+            "required": [
+                "queryType",
+                "pattern"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "queryType": {
+                    "const": "create_edge"
+                },
+                "linkType": {
+                    "type": "string"
+                },
+                "sourcePattern": {
+                    "$ref": "#/definitions/elementPattern"
+                },
+                "dstPattern": {
+                    "$ref": "#/definitions/elementPattern"
+                }
+            },
+            "required": [
+                "queryType",
+                "linkType",
+                "sourcePattern",
+                "dstPattern"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "queryType": {
+                    "const": "update_vertex"
+                },
+                "pattern": {
+                    "$ref": "#/definitions/elementPattern"
+                },
+                "attributes": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "index": {
+                                "type": "integer"
+                            },
+                            "value": {
+                                "oneOf": [
+                                    {
+                                        "type": "number"
+                                    },
+                                    {
+                                        "type": "string"
+                                    },
+                                    {
+                                        "type": "boolean"
+                                    }
+                                ]
+                            }
+                        },
+                        "required": [
+                            "index",
+                            "value"
+                        ],
+                        "additionalProperties": false
+                    }
+                }
+            },
+            "required": [
+                "queryType",
+                "pattern",
+                "attributes"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "queryType": {
+                    "const": "create_vertex_type"
+                },
+                "attributes": {
+                    "type": "array",
+                    "items": {
+                        "enum": [
+                            "INT32",
+                            "INT64",
+                            "DOUBLE",
+                            "BOOL",
+                            "STRING"
+                        ]
+                    }
+                },
+                "elementType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "queryType",
+                "attributes",
+                "elementType"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "queryType": {
+                    "const": "create_edge_type"
+                },
+                "linkType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "queryType",
+                "linkType"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "queryType": {
+                    "const": "drop_vertex_type"
+                },
+                "elementType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "queryType",
+                "elementType"
+            ],
+            "additionalProperties": false
+        },
+        {
+            "properties": {
+                "queryType": {
+                    "const": "drop_edge_type"
+                },
+                "linkType": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "queryType",
+                "linkType"
+            ],
+            "additionalProperties": false
+        }
+    ]
+}

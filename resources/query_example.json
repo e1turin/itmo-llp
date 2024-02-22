@@ -1,0 +1,33 @@
+{
+    "queryType": "match",
+    "pattern": {
+        "elementType": "label",
+        "linksOut": [
+            {
+                "linkType": "out",
+                "target": {
+                    "elementType": "label2",
+                    "attributes": {
+                        "patternType": "BIN_OP",
+                        "operation": "AND",
+                        "lhs": {
+                            "patternType": "COND",
+                            "operation": "EQ",
+                            "index": 1,
+                            "value": 1
+                        },
+                        "rhs": {
+                            "patternType": "COND",
+                            "operation": "CONTAINS",
+                            "index": 2,
+                            "value": "Hello"
+                        }
+                    },
+                    "linksOut": [],
+                    "linksIn": []
+                }
+            }
+        ],
+        "linksIn": []
+    }
+}

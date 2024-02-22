@@ -1,0 +1,94 @@
+{
+    "$schema": "http://json-schema.org/draft-07/schema#",
+    "$id": "./response_schema.json",
+    "title": "Response",
+    "description": "Response json represantation",
+    "type": "object",
+    "properties": {
+        "error": {
+            "enum": [
+                0,
+                1
+            ]
+        },
+        "result": {
+            "type": "array",
+            "items": {
+                "type": "object",
+                "properties": {
+                    "elementType": {
+                        "type": "string"
+                    },
+                    "attributes": {
+                        "type": "array",
+                        "items": {
+                            "oneOf": [
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "attributeType": {
+                                            "enum": [
+                                                "int64",
+                                                "int32",
+                                                "bool"
+                                            ]
+                                        },
+                                        "value": {
+                                            "type": "integer"
+                                        }
+                                    },
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "attributeType",
+                                        "value"
+                                    ]
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "attributeType": {
+                                            "const": "double"
+                                        },
+                                        "value": {
+                                            "type": "number"
+                                        }
+                                    },
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "attributeType",
+                                        "value"
+                                    ]
+                                },
+                                {
+                                    "type": "object",
+                                    "properties": {
+                                        "attributeType": {
+                                            "const": "string"
+                                        },
+                                        "value": {
+                                            "type": "string"
+                                        }
+                                    },
+                                    "additionalProperties": false,
+                                    "required": [
+                                        "attributeType",
+                                        "value"
+                                    ]
+                                }
+                            ]
+                        }
+                    }
+                },
+                "required": [
+                    "elementType",
+                    "attributes"
+                ],
+                "additionalProperties": false
+            }
+        }
+    },
+    "required": [
+        "error"
+    ],
+    "additionalProperties": false
+}
