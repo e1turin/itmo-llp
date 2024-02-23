@@ -21,6 +21,8 @@ constexpr size_t kMaxArenaSizeInBytes = 4LL * (1 << 30); // 4GB
 constexpr size_t kNumAvailableSizes =
     calc_num(kMinArenaSizeInBytes, kMaxArenaSizeInBytes);
 
+constexpr uint64_t kMagic = 0xC0FEBABEDEADBEEF;
+
 struct FileHeader {
   std::uint64_t magic; /* some magic number for any purpose */
   dom::Value root; /* single value-object, ref to block of another values */
@@ -43,7 +45,7 @@ struct Arena {
   } data;
 };
 
-size_t fit_arena_idx(size_t size) {
+inline size_t fit_arena_idx(size_t size) {
   size_t idx = 0; // smallest size
   while(size > mem::kMinArenaSizeInBytes && idx < mem::kNumAvailableSizes) {
     size >>= 1;

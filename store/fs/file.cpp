@@ -7,7 +7,7 @@ namespace fs {
 
 File::File(std::string_view name) : name_(name) {
   DWORD dwAccessMode          = GENERIC_READ | GENERIC_WRITE;
-  constexpr DWORD dwShareMode = 0; // exclusive
+  constexpr DWORD dwShareMode = FILE_SHARE_READ | FILE_SHARE_WRITE; // 0 = exclusive
 
   HANDLE hFile = CreateFile(name.data(), dwAccessMode, dwShareMode, nullptr,
                             OPEN_ALWAYS, FILE_ATTRIBUTE_NORMAL, nullptr);

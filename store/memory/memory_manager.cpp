@@ -7,7 +7,7 @@
 
 namespace mem {
 
-MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
+MemoryManager::MemoryManager(fs::File &&file, bool init) : file_(file) {
   LARGE_INTEGER liFileSize;
   if (!GetFileSizeEx(file_.handle(), &liFileSize)) {
     throw std::runtime_error{"Can't get file size."};
@@ -17,8 +17,18 @@ MemoryManager::MemoryManager(fs::File &&file) : file_(file) {
     if (!SetFilePointerEx(file_.handle(), liFileSize, nullptr, FILE_BEGIN)) {
       throw std::runtime_error{"Can't resize file. It still has zero size."};
     }
+    if (!SetEndOfFile(file.handle())) {
+      throw std::runtime_error{"Can't save file size. It will have zero size."};
+    }
   }
   map_file();
+  if (!check_header()) {
+    if (init) {
+      setup_header();
+    } else {
+      throw std::runtime_error{"Unspecified file format. Use additional flag to reset."};
+    }
+  };
   file_size_ = liFileSize.QuadPart;
 }
 
@@ -70,13 +80,14 @@ Offset MemoryManager::data_offset_in(Arena *arena) const {
 Offset MemoryManager::offset_of(void *p) const {
   auto *data    = static_cast<std::byte *>(p);
   size_t offset = data - mem_view_.data;
-  return Offset{offset};
+  auto off = Offset{offset};
+  return is_valid(off) ? off : Offset{0};
 }
 
 bool MemoryManager::is_null(Offset offset) { return offset.value() == 0; }
 bool MemoryManager::is_valid(Offset offset) const {
-  return offset.value() >= sizeof(FileHeader) && offset.value() < file_size_ &&
-         !is_null(offset);
+  return offset.value() == offsetof(FileHeader, root) ||
+         offset.value() >= sizeof(FileHeader) && offset.value() < file_size_;
 }
 
 std::byte *MemoryManager::expand_file_by(size_t size) {
@@ -131,6 +142,15 @@ Offset MemoryManager::use_arena(Offset offset) const {
         is_valid(arena->data.next) ? arena->data.next : Offset{0};
   }
   return offset;
+}
+bool MemoryManager::check_header() const {
+  return mem_view_.header->magic == mem::kMagic;
+}
+void MemoryManager::setup_header() const {
+  constexpr size_t header_size =  sizeof(*mem_view_.header);
+  memset(mem_view_.header, 0, header_size);
+  mem_view_.header->magic = mem::kMagic;
+  mem_view_.header->root = dom::ObjectValue::null_object().as<dom::Value>();
 }
 
 } // namespace mem

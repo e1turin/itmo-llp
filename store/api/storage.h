@@ -13,7 +13,7 @@ public:
                             std::nullptr_t>; // nullptr stands for null-object
   using ObjEntries = std::vector<std::pair<Node, Node>>;
 
-  explicit Storage(std::string_view);
+  Storage(std::string_view, bool replace_if_exists = false);
 
   [[nodiscard]] std::optional<Node> root() const;
   [[nodiscard]] std::optional<dom::Value::Type> get_type(Node) const;
@@ -21,9 +21,7 @@ public:
   [[nodiscard]] std::optional<Data> read(Node);
   [[nodiscard]] std::optional<Node> get(Node, std::string_view);
   [[nodiscard]] std::optional<ObjEntries> get_entries(Node);
-  [[nodiscard]]
   std::optional<Node> set(Node, std::string_view, const Data &);
-  [[nodiscard]]
   /**
    * Truncates the data assigned to the node, e.g. char array for string or
    * array of object entries. Performs recursively if necessary.

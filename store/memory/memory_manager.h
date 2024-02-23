@@ -15,7 +15,7 @@ namespace mem {
 
 class MemoryManager final {
 public:
-  explicit MemoryManager(fs::File &&);
+  explicit MemoryManager(fs::File &&, bool init = false);
 
   [[nodiscard]]
   std::optional<mem::Offset> root_ref() const;
@@ -65,6 +65,8 @@ public:
   size_t free(Offset) const;
 
 private:
+  [[nodiscard]] bool check_header() const;
+  void setup_header() const;
   [[nodiscard]] std::byte *expand_file_by(size_t);
   void map_file();
   [[nodiscard]] Arena *arena_for(Offset) const;

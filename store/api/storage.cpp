@@ -5,10 +5,11 @@
 #include <iostream>
 #include <iterator>
 
-Storage::Storage(std::string_view file_name) {
+Storage::Storage(std::string_view file_name, bool replace_if_exists) {
   auto db_file = fs::File(file_name);
 
-  memm_ = std::make_unique<mem::MemoryManager>(std::move(db_file));
+  memm_ = std::make_unique<mem::MemoryManager>(std::move(db_file),
+                                               replace_if_exists);
 }
 
 std::optional<Node> Storage::root() const {
