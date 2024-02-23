@@ -193,7 +193,7 @@ bool MemoryManager::move(Offset dest, Offset src, size_t size) const {
 
 template <typename T>
 Offset MemoryManager::alloc(size_t size, bool not_reserve) {
-  // TODO: granularity of memory allocations
+  // TODO: GRANULARITY OF MEMORY ALLOCATIONS
   size_t alloc_size =
       max(size * sizeof(T) + sizeof(size), mem::kMinArenaSizeInBytes);
   size_t arena_size_idx = fit_arena_idx(alloc_size);

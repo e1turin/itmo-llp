@@ -123,6 +123,10 @@ std::optional<Node> Storage::set(Node node, std::string_view key,
     if (!memm_->write(value->get_ref(), dom::Float32Value(f))) {
       return std::nullopt;
     }
+  } else if (std::holds_alternative<std::nullptr_t>(data)) {
+    if (!memm_->write(value->get_ref(), dom::ObjectValue::null_object())) {
+      return std::nullopt;
+    }
   } else {
     std::cerr << "Undefined value variant" << std::endl;
     return std::nullopt;
@@ -131,7 +135,7 @@ std::optional<Node> Storage::set(Node node, std::string_view key,
 }
 
 bool Storage::truncate(Node node) {
-  /* TODO: CHANGE RECURSION TO A LINEAR TREE TRAVERSAL */
+  /* TODO: change recursion to a linear tree traversal */
   std::optional<dom::Value> val = memm_->read<dom::Value>(node.get_ref());
   if (!val) {
     return false;
@@ -147,7 +151,7 @@ bool Storage::truncate(Node node) {
     if (data.value() == 0) {
       return true; // already null-object == empty
     }
-    // TODO: change on MemoryManager::do_for_entries(..., [](){...truncate})
+    // todo: change on MemoryManager::do_for_entries(..., [](){...truncate})
     std::optional<ObjEntries> children = get_entries(node);
     if (!children) {
       return false;

@@ -43,7 +43,7 @@ size_t MemoryManager::free(const Offset offset) const {
   Arena *arena = arena_for(offset);
   size_t arena_size_idx = fit_arena_idx(arena->size);
   if (arena_size_idx < mem::kNumAvailableSizes) {
-    // TODO: arenas can be sorted by offset
+    // todo: arenas can be sorted by offset
     arena->data.next = mem_view_.header->free_fixed_arena[arena_size_idx];
     mem_view_.header->free_fixed_arena[arena_size_idx] = offset;
   } else {

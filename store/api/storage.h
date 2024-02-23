@@ -9,7 +9,8 @@
 
 class Storage final {
 public:
-  using Data       = std::variant<bool, std::int32_t, float, std::string_view>;
+  using Data = std::variant<bool, std::int32_t, float, std::string_view,
+                            std::nullptr_t>; // nullptr stands for null-object
   using ObjEntries = std::vector<std::pair<Node, Node>>;
 
   explicit Storage(std::string_view);
@@ -23,8 +24,6 @@ public:
   [[nodiscard]]
   std::optional<Node> set(Node, std::string_view, const Data &);
   [[nodiscard]]
-  /* TODO: INSERT KEY & VALUE IN OBJECT */
-  std::optional<Node> set(Node, std::string_view, const ObjEntries &);
   /**
    * Truncates the data assigned to the node, e.g. char array for string or
    * array of object entries. Performs recursively if necessary.
@@ -41,7 +40,6 @@ public:
   bool truncate(Node, std::string_view);
 
 private:
-  /* todo: std::variant for result with error code */
   [[nodiscard]]
   static std::optional<std::int32_t> read(const dom::Int32Value &);
   [[nodiscard]]
