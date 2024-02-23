@@ -31,14 +31,7 @@ public:
 
   template <typename T, typename R>
   std::optional<R> do_for_entries(Offset offset,
-                                  std::function<R(size_t, T *)> func) {
-    if (!is_valid(offset)) {
-      return std::nullopt;
-    }
-    auto size = reinterpret_cast<size_t *>(address_of(offset));
-    auto data = reinterpret_cast<T *>(size + 1);
-    return std::optional{func(*size, data)};
-  }
+                                  std::function<R(size_t, T *)> func);
   template <typename T, typename R>
   std::optional<Offset> find_in_entries(Offset,
                                         std::function<R *(size_t, T *)>);
@@ -48,18 +41,29 @@ public:
 
   /**
    * @param dest
-   * @param begin
-   * @param end
+   * @param src
+   * @param size
    * @return true if OK
    */
-  bool write(Offset, const void *, size_t);
+  bool write(Offset dest, const void *src, size_t size) const;
   template <typename T>
-  bool write(Offset offset, T &&value);
+  bool write(Offset, T &&) const;
+  /**
+   * @param dest
+   * @param src
+   * @param size Amount of elements of type T
+   * @return true if OK
+   */
+  template <typename T>
+  [[nodiscard]] bool move(Offset dest, Offset src, size_t size) const;
 
   template <typename T>
   [[nodiscard]]
   Offset alloc(size_t size);
-  [[nodiscard]] size_t free(Offset) const;
+  template <typename T>
+  [[nodiscard]]
+  Offset realloc(Offset, size_t);
+  size_t free(Offset) const;
 
 private:
   [[nodiscard]] std::byte *expand_file_by(size_t);
@@ -104,15 +108,26 @@ MemoryManager::ref_all_pairs(Offset offset) const {
     return std::nullopt;
   }
   auto size = reinterpret_cast<size_t *>(address_of(offset));
-  auto data  = reinterpret_cast<std::pair<T, T> *>(size + 1);
+  auto data = reinterpret_cast<std::pair<T, T> *>(size + 1);
   std::vector<std::pair<Offset, Offset>> pairs;
   pairs.reserve(*size);
-  for(size_t i = 0; i < *size; ++i) {
+  for (size_t i = 0; i < *size; ++i) {
     pairs.emplace_back(offset_of(&data[i].first), offset_of(&data[i].second));
   }
   return pairs;
 }
 
+template <typename T, typename R>
+std::optional<R>
+MemoryManager::do_for_entries(Offset offset,
+                              std::function<R(size_t, T *)> func) {
+  if (!is_valid(offset)) {
+    return std::nullopt;
+  }
+  auto size = reinterpret_cast<size_t *>(address_of(offset));
+  auto data = reinterpret_cast<T *>(size + 1);
+  return std::optional{func(*size, data)};
+}
 
 template <typename T, typename R>
 std::optional<Offset>
@@ -121,14 +136,15 @@ MemoryManager::find_in_entries(Offset offset,
   if (!is_valid(offset)) {
     return std::nullopt;
   }
-  auto size      = reinterpret_cast<size_t *>(address_of(offset));
-  auto data      = reinterpret_cast<T *>(size + 1);
+  auto size = reinterpret_cast<size_t *>(address_of(offset));
+  auto data = reinterpret_cast<T *>(size + 1);
+
   auto value_ptr = func(*size, data);
-  if (value_ptr == nullptr) {
-    return std::nullopt;
+  if (value_ptr == nullptr) { // not found
+    return Offset{0};
   }
   Offset target = offset_of(value_ptr);
-  return is_valid(target) ? target : Offset{0};
+  return is_valid(target) ? std::make_optional(target) : std::nullopt;
 }
 
 template <typename T, typename R>
@@ -147,19 +163,32 @@ std::optional<std::vector<Offset>> MemoryManager::find_in_entries(
     }
   }
   std::vector<Offset> refs;
-  std::transform(
-      ptrs.begin(), ptrs.end(), std::back_inserter(refs),
-      [&](R *ptr) -> Offset { return Offset{offset_of(ptr)}; });
+  std::transform(ptrs.begin(), ptrs.end(), std::back_inserter(refs),
+                 [&](R *ptr) -> Offset { return Offset{offset_of(ptr)}; });
   return refs;
 }
 
 template <typename T>
-bool MemoryManager::write(Offset offset, T &&value) {
+bool MemoryManager::write(Offset offset, T &&value) const {
   if (!is_valid(offset)) {
     return false;
   }
   T *data = reinterpret_cast<T *>(address_of(offset));
   *data   = value;
+  return true;
+}
+
+template <typename T>
+bool MemoryManager::move(Offset dest, Offset src, size_t size) const {
+  if (!is_valid(dest) || !is_valid(src) ||
+      arena_for(dest)->size < size || arena_for(src)->size < size) {
+    return false;
+  }
+  if (dest.value() == src.value()) {
+    return true;
+  }
+  size_t move_size = size * sizeof(T) + sizeof(size);
+  memmove(address_of(dest), address_of(src), move_size);
   return true;
 }
 
@@ -181,6 +210,7 @@ Offset MemoryManager::alloc(size_t size) {
   }
   constexpr size_t extra_size = sizeof(Arena::size);
 
+  // TODO: ALLOC SPECIFIED SIZE FOR FIXED ARENAS
   std::byte *empty  = expand_file_by(alloc_size + extra_size);
   auto empty_arena  = reinterpret_cast<Arena *>(empty);
   empty_arena->size = alloc_size;
@@ -192,6 +222,16 @@ Offset MemoryManager::alloc(size_t size) {
 
   auto free_block = Offset{offset_of(count + 1)};
   return free_block;
+}
+
+template <typename T>
+Offset MemoryManager::realloc(Offset initial, size_t new_size) {
+  size_t alloc_size = new_size * sizeof(T) + sizeof(new_size);
+  Arena *curr_arena = arena_for(initial);
+  if (curr_arena->size >= alloc_size) {
+    return initial;
+  }
+  return alloc<T>(new_size);
 }
 
 } // namespace mem

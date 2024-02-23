@@ -27,7 +27,7 @@ std::optional<mem::Offset> MemoryManager::root_ref() const {
 }
 
 bool MemoryManager::write(const Offset dest, const void *src,
-                          const size_t size) {
+                          const size_t size) const {
   if (!is_valid(dest)) {
     return false;
   }
