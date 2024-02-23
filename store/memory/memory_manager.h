@@ -59,10 +59,9 @@ public:
 
   template <typename T>
   [[nodiscard]]
-  Offset alloc(size_t size);
+  Offset alloc(size_t size, bool not_reserve = true);
   template <typename T>
-  [[nodiscard]]
-  Offset realloc(Offset, size_t);
+  [[nodiscard]] Offset realloc(Offset, size_t);
   size_t free(Offset) const;
 
 private:
@@ -193,8 +192,10 @@ bool MemoryManager::move(Offset dest, Offset src, size_t size) const {
 }
 
 template <typename T>
-Offset MemoryManager::alloc(size_t size) {
-  size_t alloc_size     = size * sizeof(T) + sizeof(size);
+Offset MemoryManager::alloc(size_t size, bool not_reserve) {
+  // TODO: granularity of memory allocations
+  size_t alloc_size =
+      max(size * sizeof(T) + sizeof(size), mem::kMinArenaSizeInBytes);
   size_t arena_size_idx = fit_arena_idx(alloc_size);
   while (arena_size_idx < mem::kNumAvailableSizes &&
          is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
@@ -210,7 +211,6 @@ Offset MemoryManager::alloc(size_t size) {
   }
   constexpr size_t extra_size = sizeof(Arena::size);
 
-  // TODO: ALLOC SPECIFIED SIZE FOR FIXED ARENAS
   std::byte *empty  = expand_file_by(alloc_size + extra_size);
   auto empty_arena  = reinterpret_cast<Arena *>(empty);
   empty_arena->size = alloc_size;
@@ -218,7 +218,7 @@ Offset MemoryManager::alloc(size_t size) {
   mem_view_.header->last_arena = Offset{data_offset_in(empty_arena)};
 
   auto count = reinterpret_cast<size_t *>(empty_arena->data.bytes);
-  *count     = size;
+  *count     = not_reserve ? size : 0;
 
   auto free_block = Offset{offset_of(count + 1)};
   return free_block;

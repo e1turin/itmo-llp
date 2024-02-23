@@ -46,7 +46,7 @@ std::optional<Storage::ObjEntries> Storage::get_entries(Node n) {
   auto data = value->as<dom::ObjectValue>().get_ref();
   std::optional<std::vector<std::pair<mem::Offset, mem::Offset>>> data_refs =
       memm_->ref_all_pairs<dom::Value>(data);
-  if(!data_refs) {
+  if (!data_refs) {
     return std::nullopt;
   }
   std::vector<std::pair<Node, Node>> nodes;
@@ -60,57 +60,67 @@ std::optional<Storage::ObjEntries> Storage::get_entries(Node n) {
 }
 
 std::optional<Node> Storage::get(Node n, std::string_view k) {
-  if (auto t = get_type(n); !t || t != dom::Value::Type::kObject) {
+  std::optional<dom::Value> value = memm_->read<dom::Value>(n.get_ref());
+  if (!value || value->get_type() != dom::Value::Type::kObject) {
     return std::nullopt;
+  }
+  if (value->as<dom::ObjectValue>().get_ref().value() == 0) {
+    return Node{mem::Offset{0}};
   }
   std::function<dom::Value *(size_t, dom::Entry *)> same_key =
       [&](size_t size, dom::Entry *ent) -> dom::Value * {
-    for(size_t i = 0; i < size; ++i) {
-      auto &e = ent[i];
-      if (auto str = read(e.key); str && *str == k) {
-        return &ent[i].value;
-      }
-    }
-    return nullptr;
-  };
-  std::optional<mem::Offset> off = memm_->find_in_entries(n.get_ref(), same_key);
-  return off ? std::make_optional<Node>(*off) : std::nullopt;
+        for (size_t i = 0; i < size; ++i) {
+          auto &e = ent[i];
+          if (auto str = read(e.key); str && *str == k) {
+            return &ent[i].value;
+          }
+        }
+        return nullptr;
+      };
+  std::optional<mem::Offset> ref =
+      memm_->find_in_entries(value->as<dom::ObjectValue>().get_ref(), same_key);
+  // null-ref is 'not found' result, no need to handle
+  return ref ? std::make_optional<Node>(*ref) : std::nullopt;
 }
 
-std::optional<Node>
-Storage::set(Node n, std::string_view k, const Data& d) {
-  /* TODO: INSERT KEY & VALUE IN OBJECT */
-  std::optional<Node> value = get(n, k);
+std::optional<Node> Storage::set(Node node, std::string_view key,
+                                 const Data &data) {
+  std::optional<Node> value = get(node, key);
   if (!value) {
     return std::nullopt;
   }
-
-  if (!truncate(*value)) {
+  if (value->get_ref().value() == 0) {
+    std::optional<Node> new_value = insert_key(node, key);
+    if (!new_value) {
+      return std::nullopt;
+    }
+    value = new_value;
+  } else if (!truncate(*value)) {
     std::cerr << "Can't truncate value on offset=" << value->get_ref().value()
               << std::endl;
     return std::nullopt;
   }
-
-  if (std::holds_alternative<std::string_view>(d)) {
-    std::string_view str = std::get<std::string_view>(d);
+  if (std::holds_alternative<std::string_view>(data)) {
+    std::string_view str = std::get<std::string_view>(data);
     mem::Offset offset   = memm_->alloc<char>(str.size());
     if (!memm_->write(offset, str.data(), str.size()) ||
         !memm_->write(value->get_ref(), dom::StringValue(offset))) {
+      memm_->free(offset);
       return std::nullopt;
     }
-  } else if (std::holds_alternative<bool>(d)) {
-    bool b = std::get<bool>(d);
+  } else if (std::holds_alternative<bool>(data)) {
+    bool b = std::get<bool>(data);
     if (!memm_->write(value->get_ref(), dom::BoolValue(b))) {
       return std::nullopt;
     }
-  } else if (std::holds_alternative<std::int32_t >(d)) {
-    std::int32_t i = std::get<std::int32_t>(d);
+  } else if (std::holds_alternative<std::int32_t>(data)) {
+    std::int32_t i = std::get<std::int32_t>(data);
     if (!memm_->write(value->get_ref(), dom::Int32Value(i))) {
       return std::nullopt;
     }
-  } else if (std::holds_alternative<float>(d)) {
-    float f = std::get<float>(d);
-    if(!memm_->write(value->get_ref(), dom::Float32Value(f))) {
+  } else if (std::holds_alternative<float>(data)) {
+    float f = std::get<float>(data);
+    if (!memm_->write(value->get_ref(), dom::Float32Value(f))) {
       return std::nullopt;
     }
   } else {
@@ -165,20 +175,20 @@ bool Storage::truncate(Node node, std::string_view key) {
   }
   std::function<std::vector<dom::Value *>(size_t, dom::Entry *)> key_and_value =
       [&](size_t size, dom::Entry *ent) -> std::vector<dom::Value *> {
-        std::vector<dom::Value *> values;
-        for(size_t i = 0; i < size; ++i) {
-          auto &e = ent[i];
-          if (auto str = read(e.key); str && *str == key) {
-            values.push_back(&e.key);
-            values.push_back(&e.value);
-            auto &end = ent[size-1];
-            values.push_back(&end.key);
-            values.push_back(&end.value);
-            return values;
-          }
-        };
+    std::vector<dom::Value *> values;
+    for (size_t i = 0; i < size; ++i) {
+      auto &e = ent[i];
+      if (auto str = read(e.key); str && *str == key) {
+        values.push_back(&e.key);
+        values.push_back(&e.value);
+        auto &end = ent[size - 1];
+        values.push_back(&end.key);
+        values.push_back(&end.value);
         return values;
-      };
+      }
+    };
+    return values;
+  };
   std::optional<std::vector<mem::Offset>> entry =
       memm_->find_in_entries(data_ref, key_and_value);
   if (!entry) {
@@ -190,25 +200,27 @@ bool Storage::truncate(Node node, std::string_view key) {
   if (entry->size() != 4) { // Found required key-value and last
     return false;           // key-value for substitution.
   }
-  Node key_node = Node{(*entry)[0]};
-  Node value_node = Node{(*entry)[1]};
-  Node last_key_node = Node{(*entry)[2]};
+  Node key_node        = Node{(*entry)[0]};
+  Node value_node      = Node{(*entry)[1]};
+  Node last_key_node   = Node{(*entry)[2]};
   Node last_value_node = Node{(*entry)[3]};
-  if(!truncate(key_node) || !truncate(value_node)) {
+  if (!truncate(key_node) || !truncate(value_node)) {
     return false;
   }
   std::optional<size_t> count_entries = memm_->read<size_t>(data_ref);
   if (!count_entries) {
     return false;
   }
-  if(!memm_->write(data_ref, *count_entries - 1)) {
+  if (!memm_->write(data_ref, *count_entries - 1)) {
     return false;
   }
-  std::optional<dom::Value> last_key = memm_->read<dom::Value>(last_key_node.get_ref());
+  std::optional<dom::Value> last_key =
+      memm_->read<dom::Value>(last_key_node.get_ref());
   if (!last_key) {
     return false;
   }
-  std::optional<dom::Value> last_value = memm_->read<dom::Value>(last_value_node.get_ref());
+  std::optional<dom::Value> last_value =
+      memm_->read<dom::Value>(last_value_node.get_ref());
   if (!last_value) {
     return false;
   }
@@ -243,8 +255,7 @@ std::optional<std::string_view> Storage::read(const dom::StringValue &v) const {
   if (!v.is<dom::StringValue>()) {
     return std::nullopt;
   }
-  std::optional<std::vector<char>> chars =
-      memm_->read_all<char>(v.get_ref());
+  std::optional<std::vector<char>> chars = memm_->read_all<char>(v.get_ref());
   if (!chars) {
     return std::nullopt;
   }
@@ -259,4 +270,57 @@ Storage::read(const dom::ObjectValue &v) const {
   std::optional<std::vector<dom::Entry>> chars =
       memm_->read_all<dom::Entry>(v.get_ref());
   return *chars;
+}
+
+std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
+  std::optional<dom::Value> value = memm_->read<dom::Value>(node.get_ref());
+  if (!value || value->get_type() != dom::Value::Type::kObject) {
+    return std::nullopt;
+  }
+  if (value->as<dom::ObjectValue>().get_ref().value() == 0) {
+    constexpr size_t some_num_of_entries = 4;
+    mem::Offset data = memm_->alloc<dom::Entry>(some_num_of_entries, false);
+    if (!memm_->write(node.get_ref(), dom::ObjectValue{data}))  {
+      memm_->free(data);
+      return std::nullopt;
+    }
+  }
+  std::optional<size_t> size =
+      memm_->read<size_t>(value->as<dom::ObjectValue>().get_ref());
+  if (!size) {
+    return std::nullopt;
+  }
+  mem::Offset old_data = value->as<dom::ObjectValue>().get_ref();
+  mem::Offset new_data = memm_->realloc<dom::Entry>(old_data, *size + 1);
+  if (new_data.value() != old_data.value() &&
+      (!memm_->move<dom::Entry>(new_data, old_data, *size) ||
+       !memm_->free(old_data))) {
+    return std::nullopt;
+  }
+  std::function<std::vector<dom::Value *>(size_t, dom::Entry *)>
+      last_key_and_value =
+          [](size_t size, dom::Entry *ent) -> std::vector<dom::Value *> {
+    std::vector<dom::Value *> key_and_value;
+    if (size != 0) {
+      dom::Entry &end = ent[size];
+      key_and_value.push_back(&end.key);
+      key_and_value.push_back(&end.value);
+    }
+    return key_and_value;
+  };
+  std::optional<std::vector<mem::Offset>> entry =
+      memm_->find_in_entries(new_data, last_key_and_value);
+  if (!entry || entry->empty()) {
+    return std::nullopt;
+  }
+  Node last_key        = Node{(*entry)[0]};
+  Node last_value      = Node{(*entry)[1]};
+  mem::Offset str_data = memm_->alloc<char>(key.size());
+  if (!memm_->write(str_data, key.data(), key.size()) ||
+      !memm_->write(last_key.get_ref(), dom::StringValue{str_data}) ||
+      !memm_->write(last_value.get_ref(), dom::ObjectValue::null_object())) {
+    memm_->free(str_data);
+    return std::nullopt;
+  }
+  return last_value;
 }

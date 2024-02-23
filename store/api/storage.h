@@ -52,6 +52,7 @@ private:
   std::optional<std::string_view> read(const dom::StringValue &) const;
   [[nodiscard]]
   std::optional<std::vector<dom::Entry>> read(const dom::ObjectValue &) const;
+  [[nodiscard]] std::optional<Node> insert_key(Node, std::string_view) const;
 
 private:
   std::unique_ptr<mem::MemoryManager> memm_;
