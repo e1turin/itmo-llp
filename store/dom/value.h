@@ -128,10 +128,6 @@ public:
 class StringValue final : public VectorValue<char, Value::Type::kString> {
 public:
   explicit StringValue(mem::Offset);
-
-  // [[nodiscard]] std::string_view get_string() const {
-  //   return std::string_view{begin(), size()};
-  // }
 };
 
 struct Entry {
@@ -146,11 +142,6 @@ public:
 
 private:
   explicit ObjectValue();
-
-  //  const Value &operator[](std::string_view) const;
-  //  const Entry &operator[](const size_t i) const {
-  //    return VectorValue::operator[](i);
-  //  }
 };
 
 inline Value::Type Value::get_type() const {
