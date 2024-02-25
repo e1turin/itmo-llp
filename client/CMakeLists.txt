@@ -15,7 +15,6 @@ target_link_libraries(client common query)
 target_sources(client
         PRIVATE
         client.cpp
-        gremlin_ast_to_json.cpp
         json_to_response.cpp
         response.cpp
 )

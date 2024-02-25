@@ -4,14 +4,9 @@
 #include <valijson/utils/nlohmann_json_utils.hpp>
 
 #include "client.hpp"
-#include "gremlin_ast_to_json.hpp"
 #include "json_to_response.hpp"
 #include "response.hpp"
 #include "validate.hpp"
-
-extern "C" {
-#include "gremlin_parser/api/ast_api.h"
-}
 
 int main(int argc, char* argv[]) {
   if (argc != 4) {
@@ -39,7 +34,7 @@ int main(int argc, char* argv[]) {
     }
 
     nlohmann::json target_doc;
-    gremlin_ast_to_json(ast, target_doc);
+    ast_to_json(ast, target_doc);
     ast_free(ast);
 
     if (!validate(schema_doc, target_doc)) {

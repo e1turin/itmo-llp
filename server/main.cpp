@@ -15,14 +15,14 @@ extern "C" {
 
 int main(int argc, char* argv[]) {
   nlohmann::json query_schema_doc;
-  if (!valijson::utils::loadDocument("resources/query_schema.json", query_schema_doc)) {
-    std::cerr << "Unable to open query_schema.json" << std::endl;
+  if (!valijson::utils::loadDocument("resources/query_scheme.json", query_schema_doc)) {
+    std::cerr << "Unable to open query_scheme.json" << std::endl;
     return -1;
   }
 
   nlohmann::json element_schema_doc;
-  if (!valijson::utils::loadDocument("resources/response_schema.json", element_schema_doc)) {
-    std::cerr << "Unable to open response_schema.json" << std::endl;
+  if (!valijson::utils::loadDocument("resources/response_scheme.json", element_schema_doc)) {
+    std::cerr << "Unable to open response_scheme.json" << std::endl;
     return -1;
   }
 
