@@ -17,8 +17,7 @@ std::optional<Node> Storage::root() const {
 }
 
 std::optional<dom::Value::Type> Storage::get_type(Node node) const {
-  mem::Offset off = node.get_ref();
-  std::optional<dom::Value> value = memm_->read<dom::Value>(off);
+  std::optional<dom::Value> value = memm_->read<dom::Value>(node.get_ref());
   return value ? std::make_optional(value->get_type()) : std::nullopt;
 }
 
@@ -324,7 +323,7 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
   if (!memm_->write(str_data, key.data(), key.size()) ||
       !memm_->write(last_key.get_ref(), dom::StringValue{str_data}) ||
       !memm_->write(last_value.get_ref(), dom::ObjectValue::null_object())) {
-    memm_->free(str_data);
+    memm_->free(str_data.prev<size_t>());
     return std::nullopt;
   }
   return last_value;
