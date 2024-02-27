@@ -57,21 +57,23 @@ TEST(MemoryManageTest, alloc_save_reference) {
   EXPECT_TRUE(rt->is<dom::ObjectValue>());
 
   std::string_view str = "keklolidk";
-  auto str_ref         = mem->alloc<char>(str.size());
-  auto res             = mem->write(*rt_off, dom::StringValue{str_ref});
-  auto res_str         = mem->write(str_ref, str.data(), str.size());
-  EXPECT_TRUE(res);
-  EXPECT_TRUE(res_str);
+
+  auto str_ref = mem->alloc<char>(str.size());
+  auto res_str_data = mem->write(str_ref, str.data(), str.size());
+  EXPECT_TRUE(res_str_data);
+  auto res_str_ref = mem->write(*rt_off, dom::StringValue{str_ref.prev<size_t>()});
+  EXPECT_TRUE(res_str_ref);
 
   auto str_val = mem->read<dom::Value>(*rt_off);
   EXPECT_TRUE(str_val.has_value());
   EXPECT_TRUE(str_val->is<dom::StringValue>());
-  auto str_off = str_val->as<dom::StringValue>().get_ref();
-  EXPECT_EQ(str_ref.value(), str_off.value());
 
-  auto str_data = mem->read_all<char>(str_off);
-  EXPECT_TRUE(str_data.has_value());
+  str_ref = str_val->as<dom::StringValue>().get_ref();
+  EXPECT_EQ(str_ref.value(), str_ref.value());
 
-  auto read_str = std::string_view{str_data->data(), str_data->size()};
+  auto chars = mem->read_all<char>(str_ref);
+  EXPECT_TRUE(chars.has_value());
+
+  auto read_str = std::string_view{chars->data(), chars->size()};
   EXPECT_EQ(str, read_str);
 }
