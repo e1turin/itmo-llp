@@ -2,18 +2,13 @@
 #include "value.h"
 
 #include <cstring>
+#include <stdexcept>
 
 namespace dom {
 
 void Value::init_tagged(Tag t) {
-  tag_ = t;
   memset(payload_, 0, sizeof payload_);
-}
-
-void Value::init_tagged_pointer(const Tag t, void *p) {
-  //TODO inline tag
-  init_tagged(t);
-  *(cast_data<uintptr_t>()) = reinterpret_cast<uintptr_t>(p);
+  payload_[0] = static_cast<std::uint8_t>(t);
 }
 
 NullValue::NullValue() {
@@ -46,12 +41,20 @@ float Float32Value::get_float() const {
 
 StringValue::StringValue(mem::Offset offset) {
   init_tagged(Tag::kString);
-  *(cast_data<size_t>()) = offset.value();
+  //TODO: change to full size_t usage instead limited uint32_t
+  if (offset.value() > UINT32_MAX) {
+    throw std::runtime_error{"string data offset overflow"};
+  }
+  *(cast_data<std::uint32_t>()) = offset.value();
 }
 
 ObjectValue::ObjectValue(mem::Offset offset) {
   init_tagged(Tag::kObject);
-  *(cast_data<size_t>()) = offset.value();
+  //TODO: change to full size_t usage instead limited uint32_t
+  if (offset.value() > UINT32_MAX) {
+    throw std::runtime_error{"object data offset overflow"};
+  }
+  *(cast_data<std::uint32_t>()) = offset.value();
 }
 ObjectValue::ObjectValue() : ObjectValue{mem::Offset{0}} {}
 

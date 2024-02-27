@@ -37,8 +37,8 @@ protected:
        objects aligned as 64 bit. */
 
     // Binary values can be used instead, but now I am mot saving memory.
-    kNull = 'N', // = 0b0000'0000 // no payload, must be replaced by obj with 0
-                 // reference
+    // TODO: change to 3 bit sequence.
+    kNull        = 'N', // = 0b0000'0000 // no payload, replace with null-obj
     kShortString = 'H', // = 0b0000'0001 // inline value, unused for now
     kBoolean     = 'B', // = 0b0000'0010 // inline value
     kInt32       = 'I', // = 0b0000'0011 // inline value
@@ -46,15 +46,23 @@ protected:
     kString      = 'S', // = 0b0000'0101 // reference
     kObject      = 'O', // = 0b0000'0110 // reference
   };
-  static constexpr uint8_t kTagMask = 0b0000'0111;
+  static constexpr uint8_t kTagMask = 0b0000'0111; // unused
 
   void init_tagged(Tag);
-  void init_tagged_pointer(Tag, void *);
+
+  [[nodiscard]]
+  Tag get_tag() const {
+    return static_cast<Tag>(payload_[0]); //TODO: use kTagMask for 3 bit values
+  }
 
   template <typename T>
   [[nodiscard]]
   const T *cast_data() const {
-    return reinterpret_cast<const T *>(payload_);
+    if (sizeof(T) > sizeof(Value) / 2) {
+      return reinterpret_cast<const T *>(this);
+    } else {
+      return reinterpret_cast<const T *>(this) + 1;
+    }
   }
 
   template <typename T>
@@ -63,10 +71,8 @@ protected:
   }
 
 private:
-  Tag tag_ = Tag::kNull;
-
   static constexpr size_t kValueSize = 8;
-  std::byte payload_[kValueSize];
+  std::uint8_t payload_[kValueSize]; //tag will take 1 byte for now
 };
 
 class NullValue final : public Value {
@@ -117,8 +123,10 @@ public:
 
   [[nodiscard]]
   mem::Offset get_ref() const {
-    // NOTE: need to clear inline tag
-    return mem::Offset{*cast_data<size_t>()};
+    size_t ref = *cast_data<std::uint32_t>(); // TODO: edit to size_t offset
+                                              // and for other VectorValue types
+    // ref &= kTagMask;
+    return mem::Offset{ref};
   }
 };
 
@@ -145,7 +153,7 @@ private:
 };
 
 inline Value::Type Value::get_type() const {
-  switch (tag_) {
+  switch (get_tag()) {
   case Tag::kShortString: return Type::kString;
   case Tag::kBoolean:     return Type::kBoolean;
   case Tag::kInt32:       return Type::kInt32;
@@ -158,7 +166,7 @@ inline Value::Type Value::get_type() const {
 }
 
 inline bool Value::is_primitive() const {
-  switch (tag_) {
+  switch (get_tag()) {
   case Tag::kBoolean:
   case Tag::kInt32:
   case Tag::kFloat32:
