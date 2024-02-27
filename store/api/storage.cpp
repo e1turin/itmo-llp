@@ -4,12 +4,11 @@
 #include <format>
 #include <iostream>
 #include <iterator>
+#include <memory>
 
 Storage::Storage(std::string_view file_name, bool replace_if_exists) {
-  auto db_file = fs::File(file_name);
-
-  memm_ = std::make_unique<mem::MemoryManager>(std::move(db_file),
-                                               replace_if_exists);
+  auto f = std::make_unique<fs::File>(file_name);
+  memm_ = std::make_unique<mem::MemoryManager>(std::move(f), replace_if_exists);
 }
 
 std::optional<Node> Storage::root() const {
@@ -290,12 +289,13 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
       return std::nullopt;
     }
   }
+  value = memm_->read<dom::Value>(node.get_ref());
+  mem::Offset old_data = value->as<dom::ObjectValue>().get_ref();
   std::optional<size_t> size =
-      memm_->read<size_t>(value->as<dom::ObjectValue>().get_ref());
+      memm_->read<size_t>(old_data);
   if (!size) {
     return std::nullopt;
   }
-  mem::Offset old_data = value->as<dom::ObjectValue>().get_ref();
   mem::Offset new_data = memm_->realloc<dom::Entry>(old_data, *size + 1);
   if (new_data.value() != old_data.value() &&
       (!memm_->move<dom::Entry>(new_data, old_data, *size) ||
@@ -306,16 +306,16 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
       last_key_and_value =
           [](size_t size, dom::Entry *ent) -> std::vector<dom::Value *> {
     std::vector<dom::Value *> key_and_value;
-    if (size != 0) {
-      dom::Entry &end = ent[size];
-      key_and_value.push_back(&end.key);
-      key_and_value.push_back(&end.value);
-    }
+    // We have enough space for our purpose, so
+    // just take elements after allocated ones.
+    dom::Entry &end = ent[size];
+    key_and_value.push_back(&end.key);
+    key_and_value.push_back(&end.value);
     return key_and_value;
   };
   std::optional<std::vector<mem::Offset>> entry =
       memm_->find_in_entries(new_data, last_key_and_value);
-  if (!entry || entry->empty()) {
+  if (!entry) {
     return std::nullopt;
   }
   Node last_key        = Node{(*entry)[0]};

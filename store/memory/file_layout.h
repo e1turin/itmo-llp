@@ -23,9 +23,20 @@ constexpr size_t kNumAvailableSizes =
 
 constexpr uint64_t kMagic = 0xC0FEBABEDEADBEEF;
 
+struct ArenaSizes {
+  ArenaSizes() {
+    for (size_t val = kMinArenaSizeInBytes, i = 0; val <= kMaxArenaSizeInBytes;
+         val <<= 1) {
+      values[i++] = val;
+    }
+  }
+  size_t values[kNumAvailableSizes]{};
+};
+
 struct FileHeader {
   std::uint64_t magic; /* some magic number for any purpose */
-  dom::Value root; /* single value-object, ref to block of another values */
+  dom::Value root;     /* single value-object, ref to block of another values */
+  ArenaSizes sizes;
   mem::Offset free_fixed_arena[mem::kNumAvailableSizes]; /* array of refs to*/
   mem::Offset free_ext_arena;
   mem::Offset last_arena; /* ref to the furthest allocated arena */

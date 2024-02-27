@@ -13,7 +13,7 @@ public:
                             std::nullptr_t>; // nullptr stands for null-object
   using ObjEntries = std::vector<std::pair<Node, Node>>;
 
-  Storage(std::string_view, bool replace_if_exists = false);
+  explicit Storage(std::string_view, bool replace_if_exists = false);
 
   [[nodiscard]] std::optional<Node> root() const;
   [[nodiscard]] std::optional<dom::Value::Type> get_type(Node) const;

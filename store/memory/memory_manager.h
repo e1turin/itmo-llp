@@ -8,6 +8,7 @@
 
 #include <algorithm>
 #include <functional>
+#include <iostream>
 #include <iterator>
 #include <optional>
 
@@ -15,7 +16,9 @@ namespace mem {
 
 class MemoryManager final {
 public:
-  explicit MemoryManager(fs::File &&, bool init = false);
+
+  explicit MemoryManager(std::unique_ptr<fs::File> file, bool init = false);
+  ~MemoryManager();
 
   [[nodiscard]]
   std::optional<mem::Offset> root_ref() const;
@@ -59,7 +62,7 @@ public:
 
   template <typename T>
   [[nodiscard]]
-  Offset alloc(size_t size, bool not_reserve = true);
+  Offset alloc(size_t size, bool occupy = true);
   template <typename T>
   [[nodiscard]] Offset realloc(Offset, size_t);
   size_t free(Offset) const;
@@ -77,7 +80,7 @@ private:
   [[nodiscard]] bool is_valid(Offset) const;
   [[nodiscard]] static bool is_null(Offset);
 
-  fs::File file_;
+  std::unique_ptr<fs::File> file_;
   size_t file_size_;
   HANDLE file_map_obj_;
   MemView mem_view_;
@@ -194,23 +197,27 @@ bool MemoryManager::move(Offset dest, Offset src, size_t size) const {
 }
 
 template <typename T>
-Offset MemoryManager::alloc(size_t size, bool not_reserve) {
+Offset MemoryManager::alloc(size_t size, bool occupy) {
   // TODO: GRANULARITY OF MEMORY ALLOCATIONS
-  size_t alloc_size =
+  size_t alloc_size_init =
       max(size * sizeof(T) + sizeof(size), mem::kMinArenaSizeInBytes);
-  size_t arena_size_idx = fit_arena_idx(alloc_size);
-  while (arena_size_idx < mem::kNumAvailableSizes &&
-         is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
-    ++arena_size_idx;
-  }
-  if (arena_size_idx < mem::kNumAvailableSizes) {
+  size_t arena_size_idx = fit_arena_idx(alloc_size_init);
+  //  while (arena_size_idx < mem::kNumAvailableSizes &&
+//         is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
+//    ++arena_size_idx;
+//  }
+  if (arena_size_idx < mem::kNumAvailableSizes &&
+      !is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
     return use_arena(mem_view_.header->free_fixed_arena[arena_size_idx]);
   }
   if (arena_size_idx == mem::kNumAvailableSizes &&
       !is_null(mem_view_.header->free_ext_arena)) {
-    // TODO: split extended arena into smaller
     return use_arena(mem_view_.header->free_ext_arena);
   }
+  size_t alloc_size     = arena_size_idx < mem::kNumAvailableSizes
+                          ? mem_view_.header->sizes.values[arena_size_idx]
+                          : alloc_size_init;
+
   constexpr size_t extra_size = sizeof(Arena::size);
 
   std::byte *empty  = expand_file_by(alloc_size + extra_size);
@@ -220,9 +227,9 @@ Offset MemoryManager::alloc(size_t size, bool not_reserve) {
   mem_view_.header->last_arena = Offset{data_offset_in(empty_arena)};
 
   auto count = reinterpret_cast<size_t *>(empty_arena->data.bytes);
-  *count     = not_reserve ? size : 0;
+  *count     = occupy ? size : 0;
 
-  auto free_block = Offset{offset_of(count + 1)};
+  auto free_block = Offset{offset_of(count)}; // with already written size
   return free_block;
 }
 

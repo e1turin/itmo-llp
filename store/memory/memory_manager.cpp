@@ -7,20 +7,22 @@
 
 namespace mem {
 
-MemoryManager::MemoryManager(fs::File &&file, bool init) : file_(file) {
+MemoryManager::MemoryManager(std::unique_ptr<fs::File> file, bool init)
+    : file_(std::move(file)) {
   LARGE_INTEGER liFileSize;
-  if (!GetFileSizeEx(file_.handle(), &liFileSize)) {
+  if (!GetFileSizeEx(file_->handle(), &liFileSize)) {
     throw std::runtime_error{"Can't get file size."};
   }
   if (liFileSize.QuadPart == 0ll) {
     liFileSize.QuadPart = 1 << 12; // 4 KB
-    if (!SetFilePointerEx(file_.handle(), liFileSize, nullptr, FILE_BEGIN)) {
+    if (!SetFilePointerEx(file_->handle(), liFileSize, nullptr, FILE_BEGIN)) {
       throw std::runtime_error{"Can't resize file. It still has zero size."};
     }
-    if (!SetEndOfFile(file.handle())) {
+    if (!SetEndOfFile(file_->handle())) {
       throw std::runtime_error{"Can't save file size. It will have zero size."};
     }
   }
+  file_size_ = liFileSize.QuadPart;
   map_file();
   if (!check_header()) {
     if (init) {
@@ -29,7 +31,10 @@ MemoryManager::MemoryManager(fs::File &&file, bool init) : file_(file) {
       throw std::runtime_error{"Unspecified file format. Use additional flag to reset."};
     }
   };
-  file_size_ = liFileSize.QuadPart;
+}
+
+MemoryManager::~MemoryManager() {
+  unmap_file();
 }
 
 std::optional<mem::Offset> MemoryManager::root_ref() const {
@@ -90,29 +95,12 @@ bool MemoryManager::is_valid(Offset offset) const {
          offset.value() >= sizeof(FileHeader) && offset.value() < file_size_;
 }
 
-std::byte *MemoryManager::expand_file_by(size_t size) {
-  LARGE_INTEGER liFileSize;
-  if (!GetFileSizeEx(file_.handle(), &liFileSize)) {
-    throw std::runtime_error{"Can't get file size."};
-  }
-  LARGE_INTEGER liNewFileSize;
-  liNewFileSize.QuadPart = liFileSize.QuadPart + size;
-
-  if (!SetFilePointerEx(file_.handle(), liNewFileSize, nullptr, FILE_BEGIN)) {
-    throw std::runtime_error{std::format("Can't resize file for {} by {}",
-                                         liFileSize.QuadPart, size)};
-  }
-  map_file();
-  file_size_ = liNewFileSize.QuadPart;
-  return mem_view_.data + liFileSize.QuadPart;
-}
-
 void MemoryManager::map_file() {
   constexpr DWORD dwMaximumSizeHigh = 0; // To map size equal to
   constexpr DWORD dwMaximumSizeLow  = 0; // the whole file size.
 
   file_map_obj_ =
-      CreateFileMapping(file_.handle(), nullptr, PAGE_READWRITE,
+      CreateFileMapping(file_->handle(), nullptr, PAGE_READWRITE,
                         dwMaximumSizeHigh, dwMaximumSizeLow, nullptr);
 
   if (file_map_obj_ == nullptr) {
@@ -129,6 +117,39 @@ void MemoryManager::map_file() {
   if (mem_view_.view_ptr == nullptr) {
     throw std::runtime_error{"Can't create mapping view"};
   }
+}
+
+void MemoryManager::unmap_file() {
+    if(!CloseHandle(file_map_obj_)) {
+      std::cerr << "Can't delete mapping object" << std::endl;
+    }
+    mem_view_.view_ptr = nullptr;
+}
+
+void MemoryManager::remap_file() {
+  unmap_file();
+  map_file();
+}
+
+std::byte *MemoryManager::expand_file_by(size_t size) {
+  LARGE_INTEGER liFileSize;
+  if (!GetFileSizeEx(file_->handle(), &liFileSize)) {
+    throw std::runtime_error{"Can't get file size."};
+  }
+  LARGE_INTEGER liNewFileSize;
+  liNewFileSize.QuadPart = liFileSize.QuadPart + size;
+
+  if (!SetFilePointerEx(file_->handle(), liNewFileSize, nullptr, FILE_BEGIN)) {
+    throw std::runtime_error{std::format("Can't resize file for {} by {}",
+                                         liFileSize.QuadPart, size)};
+  }
+  if (!SetEndOfFile(file_->handle())) {
+    throw std::runtime_error{"Can't save file size for new expansion."};
+  }
+  remap_file();
+  file_size_ = liNewFileSize.QuadPart;
+  memset(mem_view_.data + liFileSize.QuadPart, 0, size);
+  return mem_view_.data + liFileSize.QuadPart;
 }
 
 Offset MemoryManager::use_arena(Offset offset) const {
@@ -151,6 +172,10 @@ void MemoryManager::setup_header() const {
   memset(mem_view_.header, 0, header_size);
   mem_view_.header->magic = mem::kMagic;
   mem_view_.header->root = dom::ObjectValue::null_object().as<dom::Value>();
+  mem_view_.header->sizes = ArenaSizes{};
+  mem_view_.header->free_ext_arena = mem::Offset{sizeof(FileHeader)};
+  Arena *free = arena_for(mem_view_.header->free_ext_arena);
+  free->size = file_size_ - sizeof(FileHeader);
 }
 
 } // namespace mem
