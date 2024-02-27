@@ -51,7 +51,7 @@ bool MemoryManager::write(const Offset dest, const void *src,
   return res != nullptr;
 }
 
-size_t MemoryManager::free(const Offset offset) const {
+size_t MemoryManager::free(const Offset offset) {
   if (!is_valid(offset)) {
     return 0;
   }

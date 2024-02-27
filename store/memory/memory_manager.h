@@ -20,18 +20,88 @@ public:
   explicit MemoryManager(std::unique_ptr<fs::File> file, bool init = false);
   ~MemoryManager();
 
+  /**
+   * Returns offset of rool element in file.
+   * @return Optional result with offset to root element in file.
+   */
   [[nodiscard]]
   std::optional<mem::Offset> root_ref() const;
 
+  /**
+   * Returns data of object of specified type stored in block with given offset.
+   * @tparam T Type of stored object.
+   * @param offset Offset to block to read from.
+   * @return Optional result with required object data.
+   */
   template <typename T>
   [[nodiscard]]
   std::optional<T> read(Offset offset) const;
+
   template <typename T>
-  [[nodiscard]] std::optional<std::vector<T>> read_all(Offset) const; //TODO match alloc api with read api: offsets to different elements.
+  [[nodiscard]]
+  std::optional<std::vector<T>> read_all(Offset) const;
+
+  /**
+   * Writes data from specified by pointer source to specified by offset block
+   * with specified size.
+   * @param dest Offset of destination block.
+   * @param src  Pointer to source data in process memory.
+   * @param size Size of bytes to be written.
+   * @return true if OK
+   */
+  bool write(Offset dest, const void *src, size_t size) const;
+  /**
+   * Writes data of given object to specified memory block.
+   * @tparam T Type of value to be written.
+   * @param dest  Offset of destination block.
+   * @param value Value to be written in specified block.
+   * @return true if OK
+   */
+  template <typename T>
+  bool write(Offset, T &&) const;
+  /**
+   * Copies memory from specified source block to specified destination block.
+   * It's not clear memory from source so it's user headache.
+   * @tparam T  Type of elements to be coppied.
+   * @param dest Offset of destination block.
+   * @param src  Offset of source block.
+   * @param size Amount of elements of type T
+   * @return true if OK
+   */
+  template <typename T>
+  [[nodiscard]] bool move(Offset dest, Offset src, size_t size) const;
+
+  /**
+   * Allocates memory block for specified amount of elements of specified size.
+   * @tparam T Type of elements to be stored in block.
+   * @param size Amount of elements of specified type needs to allocate.
+   * @param occupy Flag to specify whether allocated arena needs to be
+   * initialized with size or not.
+   * @return Offset to free space. If occupy flag is set to true (default) than
+   * offset to block after saved size.
+   */
+  template <typename T>
+  [[nodiscard]]
+  Offset alloc(size_t size, bool occupy = true);
+  /**
+   * Tries to expand block of memory allocated previously. If it can't it will
+   * allocate new one and return offset of it.
+   * @tparam T Type of elements to be stored in the block.
+   * @param initial Offset to current block of memory.
+   * @param new_size Required new size of block.
+   * @return Offset to block of memory of required size (previous or).
+   */
+  template <typename T>
+  [[nodiscard]] Offset realloc(Offset initial, size_t new_size);
+  /**
+   * Frees allocated previously block of memory.
+   * @return Size of bytes been freed.
+   */
+  size_t free(Offset);
+
   template <typename T>
   [[nodiscard]] std::optional<std::vector<std::pair<Offset, Offset>>>
       ref_all_pairs(Offset) const;
-
   template <typename T, typename R>
   std::optional<R> do_for_entries(Offset offset,
                                   std::function<R(size_t, T *)> func);
@@ -40,32 +110,7 @@ public:
                                         std::function<R *(size_t, T *)>);
   template <typename T, typename R>
   std::optional<std::vector<Offset>>
-      find_in_entries(Offset, std::function<std::vector<R *>(size_t, T *)>);
-
-  /**
-   * @param dest
-   * @param src
-   * @param size
-   * @return true if OK
-   */
-  bool write(Offset dest, const void *src, size_t size) const;
-  template <typename T>
-  bool write(Offset, T &&) const;
-  /**
-   * @param dest
-   * @param src
-   * @param size Amount of elements of type T
-   * @return true if OK
-   */
-  template <typename T>
-  [[nodiscard]] bool move(Offset dest, Offset src, size_t size) const;
-
-  template <typename T>
-  [[nodiscard]]
-  Offset alloc(size_t size, bool occupy = true);
-  template <typename T>
-  [[nodiscard]] Offset realloc(Offset, size_t);
-  size_t free(Offset) const;
+  find_in_entries(Offset, std::function<std::vector<R *>(size_t, T *)>);
 
 private:
   friend class MemoryManagerTest;
@@ -177,11 +222,11 @@ std::optional<std::vector<Offset>> MemoryManager::find_in_entries(
 }
 
 template <typename T>
-bool MemoryManager::write(Offset offset, T &&value) const {
-  if (!is_valid(offset)) {
+bool MemoryManager::write(Offset dest, T &&value) const {
+  if (!is_valid(dest)) {
     return false;
   }
-  T *data = reinterpret_cast<T *>(address_of(offset));
+  T *data = reinterpret_cast<T *>(address_of(dest));
   *data   = value;
   return true;
 }
@@ -206,10 +251,6 @@ Offset MemoryManager::alloc(size_t size, bool occupy) {
   size_t alloc_size_init =
       max(size * sizeof(T) + sizeof(size), mem::kMinArenaSizeInBytes);
   size_t arena_size_idx = fit_arena_idx(alloc_size_init);
-  //  while (arena_size_idx < mem::kNumAvailableSizes &&
-//         is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
-//    ++arena_size_idx;
-//  }
   if (arena_size_idx < mem::kNumAvailableSizes &&
       !is_null(mem_view_.header->free_fixed_arena[arena_size_idx])) {
     return use_arena(mem_view_.header->free_fixed_arena[arena_size_idx]);
@@ -231,10 +272,15 @@ Offset MemoryManager::alloc(size_t size, bool occupy) {
   mem_view_.header->last_arena = Offset{data_offset_in(empty_arena)};
 
   auto count = reinterpret_cast<size_t *>(empty_arena->data.bytes);
-  *count     = occupy ? size : 0;
-
-  auto free_block = Offset{offset_of(count)}; // with already written size
-  return free_block;
+  if (occupy) {
+    *count = size;
+    auto only_for_elements = Offset{offset_of(count + 1)};
+    return only_for_elements; // with already written size
+  } else {
+    *count = 0;
+    auto free_block = Offset{offset_of(count)};
+    return free_block;
+  }
 }
 
 template <typename T>
