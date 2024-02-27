@@ -3,6 +3,8 @@ project(tests/store)
 
 list(APPEND LIST_OF_TESTS
         store_test
+        file_test
+        memory_manager_test
 )
 
 SETUP_LIST_OF_TESTS(store "${LIST_OF_TESTS}")

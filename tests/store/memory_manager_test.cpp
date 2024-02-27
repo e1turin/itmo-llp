@@ -1,0 +1,77 @@
+#include "store/memory/memory_manager.h"
+#include <gtest/gtest.h>
+
+TEST(MemoryManagerTest, memory_manager_logic) {
+  auto file =  fs::File(R"(D:\Projects\itmo-llp\tests\store\res\memory_manager_test.db)");
+  LARGE_INTEGER liFileSize;
+  if (!GetFileSizeEx(file.handle(), &liFileSize)) {
+    throw std::runtime_error{"Can't get file size."};
+  }
+  std::cout<<liFileSize.QuadPart << std::endl;
+  if (liFileSize.QuadPart == 0ll) {
+    liFileSize.QuadPart = 1 << 12; // 4 KB
+    if (!SetFilePointerEx(file.handle(), liFileSize, nullptr, FILE_BEGIN)) {
+      throw std::runtime_error{"Can't resize file. It still has zero size."};
+    }
+    if (!SetEndOfFile(file.handle())) {
+      throw std::runtime_error{"Can't save file size. It still has zero size."};
+    }
+  }
+  std::cout<<liFileSize.QuadPart << std::endl;
+  LARGE_INTEGER liAgainFileSize;
+  if (!GetFileSizeEx(file.handle(), &liAgainFileSize)) {
+    throw std::runtime_error{"Can't get file size."};
+  }
+  std::cout<<liAgainFileSize.QuadPart << std::endl;
+}
+
+TEST(MemoryManagerTest, read_write) {
+  auto file = std::make_unique<fs::File>(
+      R"(D:\Projects\itmo-llp\tests\store\res\mm_test_rw.db)");
+  auto mem = new mem::MemoryManager{std::move(file), true};
+  auto rt_off = mem->root_ref();
+  EXPECT_TRUE(rt_off.has_value());
+  std::cout << "root off: " << rt_off->value() << std::endl;
+
+  auto obj = mem->read<dom::Value>(*rt_off);
+  EXPECT_TRUE(obj.has_value());
+  EXPECT_TRUE(obj->is<dom::ObjectValue>());
+
+  auto res = mem->write(*rt_off, dom::Int32Value(0x5555'8888));
+  EXPECT_TRUE(res);
+
+  auto int_val = mem->read<dom::Value>(*rt_off);
+  EXPECT_TRUE(int_val.has_value());
+  EXPECT_TRUE(int_val->is<dom::Int32Value>());
+  EXPECT_EQ(0x5555'8888, int_val->as<dom::Int32Value>().get_int());
+}
+
+TEST(MemoryManageTest, alloc_save_reference) {
+  auto file = std::make_unique<fs::File>(
+      R"(D:\Projects\itmo-llp\tests\store\res\mm_test_alloc_save_ref.db)");
+  auto mem    = new mem::MemoryManager{std::move(file), true};
+  auto rt_off = mem->root_ref();
+  EXPECT_TRUE(rt_off.has_value());
+  auto rt = mem->read<dom::Value>(*rt_off);
+  EXPECT_TRUE(rt.has_value());
+  EXPECT_TRUE(rt->is<dom::ObjectValue>());
+
+  std::string_view str = "keklolidk";
+  auto str_ref         = mem->alloc<char>(str.size());
+  auto res             = mem->write(*rt_off, dom::StringValue{str_ref});
+  auto res_str         = mem->write(str_ref, str.data(), str.size());
+  EXPECT_TRUE(res);
+  EXPECT_TRUE(res_str);
+
+  auto str_val = mem->read<dom::Value>(*rt_off);
+  EXPECT_TRUE(str_val.has_value());
+  EXPECT_TRUE(str_val->is<dom::StringValue>());
+  auto str_off = str_val->as<dom::StringValue>().get_ref();
+  EXPECT_EQ(str_ref.value(), str_off.value());
+
+  auto str_data = mem->read_all<char>(str_off);
+  EXPECT_TRUE(str_data.has_value());
+
+  auto read_str = std::string_view{str_data->data(), str_data->size()};
+  EXPECT_EQ(str, read_str);
+}

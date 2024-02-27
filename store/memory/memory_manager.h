@@ -27,7 +27,7 @@ public:
   [[nodiscard]]
   std::optional<T> read(Offset offset) const;
   template <typename T>
-  [[nodiscard]] std::optional<std::vector<T>> read_all(Offset) const;
+  [[nodiscard]] std::optional<std::vector<T>> read_all(Offset) const; //TODO match alloc api with read api: offsets to different elements.
   template <typename T>
   [[nodiscard]] std::optional<std::vector<std::pair<Offset, Offset>>>
       ref_all_pairs(Offset) const;
@@ -68,10 +68,14 @@ public:
   size_t free(Offset) const;
 
 private:
+  friend class MemoryManagerTest;
+
   [[nodiscard]] bool check_header() const;
   void setup_header() const;
   [[nodiscard]] std::byte *expand_file_by(size_t);
   void map_file();
+  void unmap_file();
+  void remap_file();
   [[nodiscard]] Arena *arena_for(Offset) const;
   [[nodiscard]] Offset data_offset_in(Arena *) const;
   [[nodiscard]] Offset use_arena(Offset) const;
