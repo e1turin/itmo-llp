@@ -14,6 +14,18 @@ public:
     return offset_;
   }
 
+  template <typename T>
+  [[nodiscard]]
+  Offset next() {
+    return Offset{offset_ + sizeof(T)};
+  }
+
+  template <typename T>
+  [[nodiscard]]
+  Offset prev() {
+    return Offset{offset_ - sizeof(T)};
+  }
+
 private:
   size_t offset_;
 };
