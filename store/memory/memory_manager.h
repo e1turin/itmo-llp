@@ -77,8 +77,8 @@ public:
    * @param size Amount of elements of specified type needs to allocate.
    * @param occupy Flag to specify whether allocated arena needs to be
    * initialized with size or not.
-   * @return Offset to free space. If occupy flag is set to true (default) than
-   * offset to block after saved size.
+   * @return Not zero offset to freed space. If occupy flag is set to true (default) than
+   * in the beginnig of block is saves size else 0.
    */
   template <typename T>
   [[nodiscard]]
@@ -272,15 +272,13 @@ Offset MemoryManager::alloc(size_t size, bool occupy) {
   mem_view_.header->last_arena = Offset{data_offset_in(empty_arena)};
 
   auto count = reinterpret_cast<size_t *>(empty_arena->data.bytes);
-  if (occupy) {
-    *count = size;
-    auto only_for_elements = Offset{offset_of(count + 1)};
-    return only_for_elements; // with already written size
-  } else {
-    *count = 0;
-    auto free_block = Offset{offset_of(count)};
-    return free_block;
+  *count     = occupy ? size : 0;
+
+  Offset offset = offset_of(count);
+  if (!is_valid(offset)) {
+    throw std::runtime_error{"Bad allocation: zero offset to new arena."};
   }
+  return Offset{offset};
 }
 
 template <typename T>
