@@ -16,13 +16,13 @@ public:
 
   template <typename T>
   [[nodiscard]]
-  Offset next() {
+  Offset after() {
     return Offset{offset_ + sizeof(T)};
   }
 
   template <typename T>
   [[nodiscard]]
-  Offset prev() {
+  Offset before() {
     return Offset{offset_ - sizeof(T)};
   }
 

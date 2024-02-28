@@ -21,8 +21,8 @@ std::optional<dom::Value::Type> Storage::get_type(Node node) const {
   return value ? std::make_optional(value->get_type()) : std::nullopt;
 }
 
-std::optional<Storage::Data> Storage::read(Node n) {
-  std::optional<dom::Value> value = memm_->read<dom::Value>(n.get_ref());
+std::optional<Storage::Data> Storage::read(Node node) {
+  std::optional<dom::Value> value = memm_->read<dom::Value>(node.get_ref());
   if (!value) {
     return std::nullopt;
   }
@@ -37,8 +37,8 @@ std::optional<Storage::Data> Storage::read(Node n) {
   }
 }
 
-std::optional<Storage::ObjEntries> Storage::get_entries(Node n) {
-  std::optional<dom::Value> value = memm_->read<dom::Value>(n.get_ref());
+std::optional<Storage::ObjEntries> Storage::get_entries(Node node) {
+  std::optional<dom::Value> value = memm_->read<dom::Value>(node.get_ref());
   if (!value || value->get_type() != dom::Value::Type::kObject) {
     return std::nullopt;
   }
@@ -58,8 +58,8 @@ std::optional<Storage::ObjEntries> Storage::get_entries(Node n) {
   return nodes;
 }
 
-std::optional<Node> Storage::get(Node n, std::string_view k) {
-  std::optional<dom::Value> value = memm_->read<dom::Value>(n.get_ref());
+std::optional<Node> Storage::get(Node node, std::string_view key) {
+  std::optional<dom::Value> value = memm_->read<dom::Value>(node.get_ref());
   if (!value || value->get_type() != dom::Value::Type::kObject) {
     return std::nullopt;
   }
@@ -70,7 +70,7 @@ std::optional<Node> Storage::get(Node n, std::string_view k) {
       [&](size_t size, dom::Entry *ent) -> dom::Value * {
         for (size_t i = 0; i < size; ++i) {
           auto &e = ent[i];
-          if (auto str = read(e.key); str && *str == k) {
+          if (auto str = read(e.key); str && *str == key) {
             return &ent[i].value;
           }
         }
@@ -323,7 +323,7 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
   if (!memm_->write(str_data, key.data(), key.size()) ||
       !memm_->write(last_key.get_ref(), dom::StringValue{str_data}) ||
       !memm_->write(last_value.get_ref(), dom::ObjectValue::null_object())) {
-    memm_->free(str_data.prev<size_t>());
+    memm_->free(str_data.before<size_t>());
     return std::nullopt;
   }
   return last_value;
