@@ -12,6 +12,9 @@ public:
   [[nodiscard]] mem::Offset get_ref() const {
     return ref_;
   }
+  [[nodiscard]] bool is_null() const {
+    return ref_.value() == 0;
+  }
 private:
   mem::Offset ref_;
 };
