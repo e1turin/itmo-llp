@@ -61,7 +61,7 @@ TEST(MemoryManageTest, alloc_save_reference) {
   auto str_ref = mem->alloc<char>(str.size());
   auto res_str_data = mem->write(str_ref, str.data(), str.size());
   EXPECT_TRUE(res_str_data);
-  auto res_str_ref = mem->write(*rt_off, dom::StringValue{str_ref.prev<size_t>()});
+  auto res_str_ref = mem->write(*rt_off, dom::StringValue{str_ref.before<size_t>()});
   EXPECT_TRUE(res_str_ref);
 
   auto str_val = mem->read<dom::Value>(*rt_off);
