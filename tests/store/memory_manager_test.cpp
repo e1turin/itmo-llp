@@ -59,17 +59,18 @@ TEST(MemoryManageTest, alloc_save_reference) {
   std::string_view str = "keklolidk";
 
   auto str_ref = mem->alloc<char>(str.size());
-  auto res_str_data = mem->write(str_ref, str.data(), str.size());
+  EXPECT_EQ(str.size(), mem->read<size_t>(str_ref));
+  auto res_str_data = mem->write(str_ref.after<size_t>(), str.data(), str.size());
   EXPECT_TRUE(res_str_data);
-  auto res_str_ref = mem->write(*rt_off, dom::StringValue{str_ref.before<size_t>()});
+  auto res_str_ref = mem->write(*rt_off, dom::StringValue{str_ref});
   EXPECT_TRUE(res_str_ref);
 
   auto str_val = mem->read<dom::Value>(*rt_off);
   EXPECT_TRUE(str_val.has_value());
   EXPECT_TRUE(str_val->is<dom::StringValue>());
 
-  str_ref = str_val->as<dom::StringValue>().get_ref();
-  EXPECT_EQ(str_ref.value(), str_ref.value());
+  auto str_ref_read = str_val->as<dom::StringValue>().get_ref();
+  EXPECT_EQ(str_ref_read.value(), str_ref.value());
 
   auto chars = mem->read_all<char>(str_ref);
   EXPECT_TRUE(chars.has_value());
