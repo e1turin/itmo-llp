@@ -1,5 +1,6 @@
 #include "store/memory/memory_manager.h"
 #include <gtest/gtest.h>
+#include <format>
 
 TEST(MemoryManagerTest, memory_manager_logic) {
   auto file =  fs::File(R"(D:\Projects\itmo-llp\tests\store\out\memory_manager_test.db)");
@@ -25,9 +26,12 @@ TEST(MemoryManagerTest, memory_manager_logic) {
   std::cout<<liAgainFileSize.QuadPart << std::endl;
 }
 
+#define STRINGIFY(x) #x
+#define TO_STRING(x) STRINGIFY(x)
+#define UNIQUE() TO_STRING(__COUNTER__)
 TEST(MemoryManagerTest, read_write) {
   auto file = std::make_unique<fs::File>(
-      R"(D:\Projects\itmo-llp\tests\store\out\mm_test_rw.db)");
+      std::format(R"(D:\Projects\itmo-llp\tests\store\out\mm_test_rw-{}.db)",std::time(nullptr)));
   auto mem = new mem::MemoryManager{std::move(file), true};
   auto rt_off = mem->root_ref();
   EXPECT_TRUE(rt_off.has_value());
@@ -47,8 +51,9 @@ TEST(MemoryManagerTest, read_write) {
 }
 
 TEST(MemoryManageTest, alloc_save_reference) {
-  auto file = std::make_unique<fs::File>(
-      R"(D:\Projects\itmo-llp\tests\store\out\mm_test_alloc_save_ref.db)");
+  auto file   = std::make_unique<fs::File>(std::format(
+      R"(D:\Projects\itmo-llp\tests\store\out\mm_test_alloc_save_ref-{}.db)",
+      std::time(nullptr)));
   auto mem    = new mem::MemoryManager{std::move(file), true};
   auto rt_off = mem->root_ref();
   EXPECT_TRUE(rt_off.has_value());
