@@ -102,7 +102,7 @@ std::optional<Node> Storage::set(Node node, std::string_view key,
   if (std::holds_alternative<std::string_view>(data)) {
     std::string_view str = std::get<std::string_view>(data);
     mem::Offset offset   = memm_->alloc<char>(str.size());
-    if (!memm_->write(offset, str.data(), str.size()) ||
+    if (!memm_->write(offset.after<size_t>(), str.data(), str.size()) ||
         !memm_->write(value->get_ref(), dom::StringValue(offset))) {
       memm_->free(offset);
       return std::nullopt;
@@ -289,16 +289,16 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
     }
   }
   value = memm_->read<dom::Value>(node.get_ref());
-  mem::Offset old_data = value->as<dom::ObjectValue>().get_ref();
+  mem::Offset old_data_ref = value->as<dom::ObjectValue>().get_ref();
   std::optional<size_t> size =
-      memm_->read<size_t>(old_data);
+      memm_->read<size_t>(old_data_ref);
   if (!size) {
     return std::nullopt;
   }
-  mem::Offset new_data = memm_->realloc<dom::Entry>(old_data, *size + 1);
-  if (new_data.value() != old_data.value() &&
-      (!memm_->move<dom::Entry>(new_data, old_data, *size) ||
-       !memm_->free(old_data))) {
+  mem::Offset new_data_ref = memm_->realloc<dom::Entry>(old_data_ref, *size + 1);
+  if (new_data_ref.value() != old_data_ref.value() &&
+      (!memm_->move<dom::Entry>(new_data_ref, old_data_ref, *size) ||
+       !memm_->free(old_data_ref))) {
     return std::nullopt;
   }
   std::function<std::vector<dom::Value *>(size_t, dom::Entry *)>
@@ -313,14 +313,14 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
     return key_and_value;
   };
   std::optional<std::vector<mem::Offset>> entry =
-      memm_->find_in_entries(new_data, last_key_and_value);
+      memm_->find_in_entries(new_data_ref, last_key_and_value);
   if (!entry) {
     return std::nullopt;
   }
   Node last_key        = Node{(*entry)[0]};
   Node last_value      = Node{(*entry)[1]};
   mem::Offset str_data = memm_->alloc<char>(key.size());
-  if (!memm_->write(str_data, key.data(), key.size()) ||
+  if (!memm_->write(str_data.after<size_t>(), key.data(), key.size()) ||
       !memm_->write(last_key.get_ref(), dom::StringValue{str_data}) ||
       !memm_->write(last_value.get_ref(), dom::ObjectValue::null_object())) {
     memm_->free(str_data.before<size_t>());
