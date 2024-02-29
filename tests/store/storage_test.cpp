@@ -1,9 +1,12 @@
 #include "store/api/storage.h"
 #include <gtest/gtest.h>
+#include <format>
 
-TEST(StorageTest, store_logic) {
+TEST(StorageTest, set_key_to_null_twice) {
   constexpr bool replace_if_exists = true;
-  auto store = new Storage(R"(D:\Projects\itmo-llp\tests\store\out\storage_test.db)",
+  auto store = new Storage(std::format(
+      R"(D:\Projects\itmo-llp\tests\store\out\storage_test-{}.db)",
+      std::time(nullptr)),
                   replace_if_exists);
   auto rt = store->root();
   EXPECT_TRUE(rt.has_value());
