@@ -16,14 +16,14 @@ public:
 
   template <typename T>
   [[nodiscard]]
-  Offset after() {
-    return Offset{offset_ + sizeof(T)};
+  Offset after(size_t num = 1) {
+    return Offset{offset_ + num * sizeof(T)};
   }
 
   template <typename T>
   [[nodiscard]]
-  Offset before() {
-    return Offset{offset_ - sizeof(T)};
+  Offset before(size_t num = 1) {
+    return Offset{offset_ - num * sizeof(T)};
   }
 
 private:
