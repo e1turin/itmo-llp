@@ -2,7 +2,7 @@
 #include <gtest/gtest.h>
 
 TEST(MemoryManagerTest, memory_manager_logic) {
-  auto file =  fs::File(R"(D:\Projects\itmo-llp\tests\store\res\memory_manager_test.db)");
+  auto file =  fs::File(R"(D:\Projects\itmo-llp\tests\store\out\memory_manager_test.db)");
   LARGE_INTEGER liFileSize;
   if (!GetFileSizeEx(file.handle(), &liFileSize)) {
     throw std::runtime_error{"Can't get file size."};
@@ -27,7 +27,7 @@ TEST(MemoryManagerTest, memory_manager_logic) {
 
 TEST(MemoryManagerTest, read_write) {
   auto file = std::make_unique<fs::File>(
-      R"(D:\Projects\itmo-llp\tests\store\res\mm_test_rw.db)");
+      R"(D:\Projects\itmo-llp\tests\store\out\mm_test_rw.db)");
   auto mem = new mem::MemoryManager{std::move(file), true};
   auto rt_off = mem->root_ref();
   EXPECT_TRUE(rt_off.has_value());
@@ -48,7 +48,7 @@ TEST(MemoryManagerTest, read_write) {
 
 TEST(MemoryManageTest, alloc_save_reference) {
   auto file = std::make_unique<fs::File>(
-      R"(D:\Projects\itmo-llp\tests\store\res\mm_test_alloc_save_ref.db)");
+      R"(D:\Projects\itmo-llp\tests\store\out\mm_test_alloc_save_ref.db)");
   auto mem    = new mem::MemoryManager{std::move(file), true};
   auto rt_off = mem->root_ref();
   EXPECT_TRUE(rt_off.has_value());

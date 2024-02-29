@@ -4,3 +4,4 @@
 .cache/
 cmake-*/
 build/
+tests/store/out/
