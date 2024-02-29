@@ -37,9 +37,16 @@ public:
   [[nodiscard]]
   std::optional<T> read(Offset offset) const;
 
+  /**
+   * Return container with elements of specified type.
+   * @tparam T Type of stored elements
+   * @param offset Reference to block of memory with stored elements.
+   * Block supposed to have amount of elements in the beginig.
+   * @return Optional container with elements.
+   */
   template <typename T>
   [[nodiscard]]
-  std::optional<std::vector<T>> read_all(Offset) const;
+  std::optional<std::vector<T>> read_all(Offset offset) const;
 
   /**
    * Writes data from specified by pointer source to specified by offset block
