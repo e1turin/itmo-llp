@@ -321,6 +321,14 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
   if (!entry) {
     return std::nullopt;
   }
+  mem::Offset last_key_off = value->as<dom::ObjectValue>()
+                                 .get_ref()
+                                 .after<dom::Entry>(*size)
+                                 .after<decltype(dom::Entry::value)>(0);
+  mem::Offset last_value_off = value->as<dom::ObjectValue>()
+                                   .get_ref()
+                                   .after<dom::Entry>(*size)
+                                   .after<decltype(dom::Entry::key)>(1);
   Node last_key        = Node{(*entry)[0]};
   Node last_value      = Node{(*entry)[1]};
   mem::Offset str_data = memm_->alloc<char>(key.size());

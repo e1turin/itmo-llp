@@ -16,13 +16,7 @@ add_subdirectory(dom)
 add_subdirectory(fs)
 add_subdirectory(memory)
 
-add_executable(main_store)
-target_sources(main_store
+target_sources(store
         PRIVATE
-        main.cpp
-)
-
-target_link_libraries(main_store
-        PUBLIC
-        store
+        store.cpp
 )
