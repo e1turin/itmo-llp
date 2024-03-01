@@ -1,0 +1,22 @@
+>db.insert({pole/vtoroe_pole=true})
+Ok
+>db.find({pole/vtoroe_pole})
+Ok: true
+>db.insert({pole/vtoroe_pole=false})
+Ok
+>db.find({pole/vtoroe_pole})
+Ok: false
+>db.insert({pole/tretye_pole="lol"})
+Ok
+>db.find({pole/tretye_pole})
+Ok: "lol"
+>db.find({pole/*})
+Ok: Count elements: 2
+vtoroe_pole=false
+tretye_pole="lol"
+>db.delete({pole/vtoroe_pole=true})
+Fail: No such node
+>db.delete({pole/vtoroe_pole=false})
+Ok
+>db.find({pole/*})
+Ok: Count elements: 1
