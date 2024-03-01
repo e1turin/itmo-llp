@@ -47,7 +47,7 @@ bool MemoryManager::write(const Offset dest, const void *src,
     return false;
   }
   void *data  = mem_view_.data + dest.value();
-  void *res   = memcpy(data, src, size);
+  void *res   = std::memcpy(data, src, size);
   return res != nullptr;
 }
 

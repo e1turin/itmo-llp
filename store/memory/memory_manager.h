@@ -158,7 +158,7 @@ std::optional<std::vector<T>> MemoryManager::read_all(Offset offset) const {
   auto size = reinterpret_cast<size_t *>(address_of(offset));
   T *begin  = reinterpret_cast<T *>(size + 1);
   T *end    = begin + *size;
-  return std::vector<T>{begin, end};
+  return std::vector<T>(begin, end);
 }
 
 template <typename T>
