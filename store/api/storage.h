@@ -9,7 +9,7 @@
 
 class Storage final {
 public:
-  using Data = std::variant<bool, std::int32_t, float, std::string_view,
+  using Data = std::variant<bool, std::int32_t, float, std::string,
                             std::nullptr_t>; // nullptr stands for null-object
   using ObjEntries = std::vector<std::pair<Node, Node>>;
 
@@ -103,7 +103,7 @@ private:
    * StringValue type and has correct reference else nullopt.
    */
   [[nodiscard]]
-  std::optional<std::string_view> read(const dom::StringValue &v) const;
+  std::optional<std::string> read(const dom::StringValue &v) const;
   [[nodiscard]] /* DEPRECATED ??? */
   std::optional<std::vector<dom::Entry>> read(const dom::ObjectValue &) const;
   /**

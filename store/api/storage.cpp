@@ -99,8 +99,8 @@ std::optional<Node> Storage::set(Node node, std::string_view key,
               << std::endl;
     return std::nullopt;
   }
-  if (std::holds_alternative<std::string_view>(data)) {
-    std::string_view str = std::get<std::string_view>(data);
+  if (std::holds_alternative<std::string>(data)) {
+    std::string_view str = std::get<std::string>(data);
     mem::Offset offset   = memm_->alloc<char>(str.size());
     if (!memm_->write(offset.after<size_t>(), str.data(), str.size()) ||
         !memm_->write(value->get_ref(), dom::StringValue(offset))) {
@@ -254,7 +254,7 @@ std::optional<bool> Storage::read(const dom::BoolValue &v) {
   return v.get_bool();
 }
 
-std::optional<std::string_view> Storage::read(const dom::StringValue &v) const {
+std::optional<std::string> Storage::read(const dom::StringValue &v) const {
   if (!v.is<dom::StringValue>()) {
     return std::nullopt;
   }
@@ -262,7 +262,7 @@ std::optional<std::string_view> Storage::read(const dom::StringValue &v) const {
   if (!chars) {
     return std::nullopt;
   }
-  return std::string_view{chars->data(), chars->size()};
+  return std::string{chars->data(), chars->size()};
 }
 
 std::optional<std::vector<dom::Entry>>
@@ -272,7 +272,7 @@ Storage::read(const dom::ObjectValue &v) const {
   }
   std::optional<std::vector<dom::Entry>> chars =
       memm_->read_all<dom::Entry>(v.get_ref());
-  return *chars;
+  return chars;
 }
 
 std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
@@ -301,6 +301,10 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
        !memm_->free(old_data_ref))) {
     return std::nullopt;
   }
+  size = memm_->read<size_t>(new_data_ref);
+  if (!size) {
+    return std::nullopt;
+  }
   std::function<std::vector<dom::Value *>(size_t, dom::Entry *)>
       last_key_and_value =
           [](size_t size, dom::Entry *ent) -> std::vector<dom::Value *> {
@@ -322,9 +326,11 @@ std::optional<Node> Storage::insert_key(Node node, std::string_view key) const {
   mem::Offset str_data = memm_->alloc<char>(key.size());
   if (!memm_->write(str_data.after<size_t>(), key.data(), key.size()) ||
       !memm_->write(last_key.get_ref(), dom::StringValue{str_data}) ||
-      !memm_->write(last_value.get_ref(), dom::ObjectValue::null_object())) {
+      !memm_->write(last_value.get_ref(), dom::ObjectValue::null_object()) ||
+      !memm_->write(new_data_ref, *size + 1)) {
     memm_->free(str_data.before<size_t>());
     return std::nullopt;
   }
+
   return last_value;
 }
