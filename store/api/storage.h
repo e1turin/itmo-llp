@@ -32,20 +32,20 @@ public:
    * @param node Node which value is required to read.
    * @return Sum type of all available data types for the storage.
    */
-  [[nodiscard]] std::optional<Data> read(Node node);
+  [[nodiscard]] std::optional<Data> read(Node node) const;
   /**
    * Get child node of given parent node by given string key.
    * @param node Node which child is wanted to get.
    * @param key String value of key, by
    * @return Optional node. Null-node if no key is presented.
    */
-  [[nodiscard]] std::optional<Node> get(Node node, std::string_view key);
+  [[nodiscard]] std::optional<Node> get(Node node, std::string_view key) const;
   /**
    * Return collection of nodes stored in object value.
    * @param node Node which children are required to get.
    * @return Optional collection of nodes. Emplty collection if node has no entries.
    */
-  [[nodiscard]] std::optional<ObjEntries> get_entries(Node node);
+  [[nodiscard]] std::optional<ObjEntries> get_entries(Node node) const;
   /**
    * Set value to given node with specified key. Updates value if entry already
    * exists or creates key and sets it's value if not exists. Also frees memory
@@ -55,7 +55,7 @@ public:
    * @param data Sum type of data in storage.
    * @return Optional node of value that have been just stored.
    */
-  std::optional<Node> set(Node node, std::string_view key, const Data &data);
+  std::optional<Node> set(Node node, std::string_view key, const Data &data) const;
   /**
    * Truncates the data assigned to the node, e.g. char array for string or
    * array of object entries. Performs recursively if necessary.
@@ -63,7 +63,7 @@ public:
    * @param node Node which data is to be cleared.
    * @return true if truncation was performed.
    */
-  bool truncate(Node node);
+  bool truncate(Node node) const;
   /**
    * Truncates the data assigned to the specified key of object-node,
    * Performs recursively if necessary. The node's key and corresponding
@@ -72,7 +72,7 @@ public:
    * @param key Name of object entry key. Value assosiated with this key must be cleared.
    * @return true if truncation was performed.
    */
-  bool truncate(Node node, std::string_view key);
+  bool truncate(Node node, std::string_view key) const;
 
 private:
   /**

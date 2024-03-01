@@ -21,7 +21,7 @@ std::optional<dom::Value::Type> Storage::get_type(Node node) const {
   return value ? std::make_optional(value->get_type()) : std::nullopt;
 }
 
-std::optional<Storage::Data> Storage::read(Node node) {
+std::optional<Storage::Data> Storage::read(Node node) const {
   std::optional<dom::Value> value = memm_->read<dom::Value>(node.get_ref());
   if (!value) {
     return std::nullopt;
@@ -37,7 +37,7 @@ std::optional<Storage::Data> Storage::read(Node node) {
   }
 }
 
-std::optional<Storage::ObjEntries> Storage::get_entries(Node node) {
+std::optional<Storage::ObjEntries> Storage::get_entries(Node node) const {
   std::optional<dom::Value> value = memm_->read<dom::Value>(node.get_ref());
   if (!value || value->get_type() != dom::Value::Type::kObject) {
     return std::nullopt;
@@ -58,7 +58,7 @@ std::optional<Storage::ObjEntries> Storage::get_entries(Node node) {
   return nodes;
 }
 
-std::optional<Node> Storage::get(Node node, std::string_view key) {
+std::optional<Node> Storage::get(Node node, std::string_view key) const {
   std::optional<dom::Value> value = memm_->read<dom::Value>(node.get_ref());
   if (!value || value->get_type() != dom::Value::Type::kObject) {
     return std::nullopt;
@@ -83,7 +83,7 @@ std::optional<Node> Storage::get(Node node, std::string_view key) {
 }
 
 std::optional<Node> Storage::set(Node node, std::string_view key,
-                                 const Data &data) {
+                                 const Data &data) const {
   std::optional<Node> value = get(node, key);
   if (!value) {
     return std::nullopt;
@@ -133,7 +133,7 @@ std::optional<Node> Storage::set(Node node, std::string_view key,
   return *value;
 }
 
-bool Storage::truncate(Node node) {
+bool Storage::truncate(Node node) const {
   /* TODO: change recursion to a linear tree traversal */
   std::optional<dom::Value> val = memm_->read<dom::Value>(node.get_ref());
   if (!val) {
@@ -167,7 +167,7 @@ bool Storage::truncate(Node node) {
   return memm_->write(node.get_ref(), dom::ObjectValue::null_object());
 }
 
-bool Storage::truncate(Node node, std::string_view key) {
+bool Storage::truncate(Node node, std::string_view key) const {
   std::optional<dom::Value> val = memm_->read<dom::Value>(node.get_ref());
   if (val->get_type() != dom::Value::Type::kObject) {
     return false;

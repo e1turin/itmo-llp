@@ -9,15 +9,25 @@ struct Query {
   Type type;
   Constraint cnrt;
   Storage::Data value;
+  Query *sub_query;
+
+  [[nodiscard]] bool is_terminal() const {
+    return type != kSelect;
+  }
 };
 
 struct Response {
   enum Status { kSuccess, kFail };
-
-  Status status;
-  union {
+  union Payload {
     Storage::Data data;
     std::string msg;
+    ~Payload() {}
   };
+
+  Status status;
+  Payload payload;
+
+//  Response(Status status, std::string str) : status(status), payload(str) {}
+//  Response(Status status, Sto) : status(status), payload(str) {}
 };
 
